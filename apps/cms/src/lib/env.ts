@@ -2,14 +2,14 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 /**
- * Charge le `.env` unique de la racine du monorepo.
+ * Loads the single `.env` at the monorepo root.
  *
- * Importé en tout premier par `payload.config.ts`, donc emprunté par tous les
- * points d'entrée : serveur Next, CLI Payload, script de seed.
+ * Imported first by `payload.config.ts`, so every entry point picks it up: the
+ * Next server, the Payload CLI, the seed script.
  *
- * `process.loadEnvFile` est natif à Node — pas de dépendance. En conteneur le
- * fichier n'existe pas : Lagoon injecte directement les variables, et l'absence
- * du fichier n'est donc pas une erreur.
+ * `process.loadEnvFile` is built into Node — no dependency. In a container the
+ * file does not exist: Lagoon injects the variables directly, so its absence is
+ * not an error.
  */
 const dirname = path.dirname(fileURLToPath(import.meta.url))
 const repoRootEnv = path.resolve(dirname, '../../../../.env')
@@ -17,5 +17,5 @@ const repoRootEnv = path.resolve(dirname, '../../../../.env')
 try {
   process.loadEnvFile(repoRootEnv)
 } catch {
-  // Pas de .env : les variables viennent de l'environnement.
+  // No .env: the variables come from the environment.
 }

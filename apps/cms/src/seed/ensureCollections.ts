@@ -6,18 +6,18 @@ interface MongooseLikeModel {
 }
 
 /**
- * Prépare les collections MongoDB avant toute écriture.
+ * Prepares the MongoDB collections before any write.
  *
- * Sur une base neuve, Mongoose crée les collections et construit leurs index
- * paresseusement, en tâche de fond. Payload, lui, écrit dans des transactions —
- * et une transaction MongoDB n'attend qu'environ 5 ms pour obtenir un verrou.
- * Les deux se marchent dessus : le premier `pnpm seed` échoue sur un
- * `TransientTransactionError` (`WriteConflict`, puis `Unable to acquire IX
- * lock`), le second passe. Comportement déroutant qu'on préfère supprimer.
+ * On a fresh database Mongoose creates collections and builds their indexes
+ * lazily, in the background. Payload, meanwhile, writes inside transactions —
+ * and a MongoDB transaction only waits about 5 ms to acquire a lock. The two
+ * collide: the first `pnpm seed` fails on a `TransientTransactionError`
+ * (`WriteConflict`, then `Unable to acquire IX lock`) while the second succeeds.
+ * Confusing behaviour we would rather remove.
  *
- * `Model.init()` est la primitive Mongoose qui résout une fois la collection
- * créée et ses index construits. On l'attend, hors transaction, pour toutes les
- * collections — y compris celles des versions, créées par `versions.drafts`.
+ * `Model.init()` is the Mongoose primitive that resolves once the collection
+ * exists and its indexes are built. We await it, outside any transaction, for
+ * every collection — including the versions ones created by `versions.drafts`.
  */
 export async function ensureCollections(payload: Payload): Promise<void> {
   const db = payload.db as unknown as {
@@ -32,9 +32,9 @@ export async function ensureCollections(payload: Payload): Promise<void> {
       try {
         await model.createCollection?.()
       } catch {
-        // Déjà présente : cas nominal dès le deuxième lancement.
+        // Already there: the normal case from the second run onwards.
       }
-      // Attend la fin de la construction des index.
+      // Waits for index builds to finish.
       await model.init?.()
     }),
   )

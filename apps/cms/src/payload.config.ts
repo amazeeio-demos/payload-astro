@@ -1,4 +1,4 @@
-// Doit rester en tout premier : peuple process.env avant toute autre lecture.
+// Must stay first: populates process.env before anything else reads it.
 import './lib/env'
 
 import { mongooseAdapter } from '@payloadcms/db-mongodb'
@@ -33,10 +33,10 @@ const CODE_LANGUAGES = {
   css: 'CSS',
   markdown: 'Markdown',
   diff: 'Diff',
-  plaintext: 'Texte brut',
+  plaintext: 'Plain text',
 }
 
-/** Origines autorisées à interroger l'API : le site Astro, en dev et en prod. */
+/** Origins allowed to query the API: the Astro site, in dev and in production. */
 const allowedOrigins = [
   process.env.SITE_URL,
   process.env.LAGOON_ROUTE,
@@ -51,7 +51,7 @@ export default buildConfig({
     },
   },
   collections: [Docs, Categories, Media, Users],
-  // Doit rester aligné avec LOCALES dans apps/web/src/site.ts.
+  // Must stay in sync with LOCALES in apps/web/src/site.ts.
   localization: {
     locales: ['en', 'fr'],
     defaultLocale: 'en',
@@ -59,15 +59,15 @@ export default buildConfig({
   },
   cors: allowedOrigins,
   csrf: allowedOrigins,
-  // L'éditeur Lexical n'a pas de bloc de code natif — rédhibitoire pour de la
-  // documentation technique. `CodeBlock` est le bloc fourni par Payload : il
-  // apporte l'UI d'édition et, surtout, un convertisseur Markdown bidirectionnel
-  // qui préserve les clôtures ``` et le langage à l'aller comme au retour.
+  // The Lexical editor has no built-in code block — a dealbreaker for technical
+  // documentation. `CodeBlock` is the block Payload ships: it brings the editing
+  // UI and, more importantly, a two-way Markdown converter that preserves ```
+  // fences and their language in both directions.
   //
-  // La liste par défaut est celle de Monaco (une centaine d'entrées, et `shell`
-  // plutôt que `bash`). On la restreint à ce que ce projet utilise réellement,
-  // avec des identifiants que Shiki reconnaît côté Astro : la valeur choisie ici
-  // atterrit telle quelle après les ``` et pilote la coloration syntaxique.
+  // Its default list is Monaco's (about a hundred entries, and `shell` rather
+  // than `bash`). We narrow it to what this project actually uses, with
+  // identifiers Shiki recognises on the Astro side: the value picked here lands
+  // verbatim after the ``` and drives syntax highlighting.
   editor: lexicalEditor({
     features: ({ defaultFeatures }) => [
       ...defaultFeatures,

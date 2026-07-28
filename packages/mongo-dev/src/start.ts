@@ -1,12 +1,12 @@
 /**
- * MongoDB de développement, sans Docker ni installation système.
+ * Development MongoDB, without Docker or a system-wide installation.
  *
- * `mongodb-memory-server` télécharge un binaire `mongod` officiel au premier
- * lancement et le met en cache. On le démarre en replica set mono-nœud parce
- * que Payload utilise des transactions, indisponibles sur une instance seule.
+ * `mongodb-memory-server` downloads an official `mongod` binary on first run and
+ * caches it. We start it as a single-node replica set because Payload uses
+ * transactions, which a standalone instance does not offer.
  *
- * Malgré le nom du paquet, les données ne sont pas en mémoire : `dbPath` pointe
- * sur `.data/mongo` à la racine du dépôt, donc elles survivent aux redémarrages.
+ * Despite the package name the data is not held in memory: `dbPath` points at
+ * `.data/mongo` in the repo root, so it survives restarts.
  */
 import { mkdirSync } from 'node:fs'
 import path from 'node:path'
@@ -23,8 +23,8 @@ const DB_NAME = 'docs'
 
 mkdirSync(dbPath, { recursive: true })
 
-// Le binaire mongod est mis en cache par le postinstall du paquet, dans
-// node_modules/.cache — il n'est téléchargé qu'une fois.
+// The mongod binary is cached by the package's postinstall, under
+// node_modules/.cache — it is only downloaded once.
 const { MongoMemoryReplSet } = await import('mongodb-memory-server')
 
 const replSet = await MongoMemoryReplSet.create({
@@ -34,15 +34,15 @@ const replSet = await MongoMemoryReplSet.create({
 
 const uri = `mongodb://127.0.0.1:${PORT}/${DB_NAME}?replicaSet=${REPL_SET_NAME}&directConnection=true`
 
-console.log(`[mongo-dev] prêt sur ${uri}`)
-console.log(`[mongo-dev] données : ${dbPath}`)
+console.log(`[mongo-dev] ready on ${uri}`)
+console.log(`[mongo-dev] data: ${dbPath}`)
 
 let stopping = false
 const shutdown = async (signal: NodeJS.Signals) => {
   if (stopping) return
   stopping = true
-  console.log(`[mongo-dev] ${signal} reçu, arrêt…`)
-  // `doCleanup: false` : sans ça le paquet efface `dbPath` en sortant.
+  console.log(`[mongo-dev] got ${signal}, shutting down…`)
+  // `doCleanup: false` — without it the package deletes `dbPath` on the way out.
   await replSet.stop({ doCleanup: false })
   process.exit(0)
 }

@@ -1,37 +1,38 @@
 docker-compose-yaml: docker-compose.yml
 
-# Injecte LAGOON_GIT_SHA dans les conteneurs, utile pour tracer une build.
+# Injects LAGOON_GIT_SHA into the containers, handy for tracing a build.
 environment_variables:
   git_sha: 'true'
 
 tasks:
-  # Lagoon construit les images avant de les déployer. Au moment du `docker
-  # build`, ni le CMS ni la base ne sont joignables : le site statique ne peut
-  # donc pas être généré là. On le génère ici, après le rollout, quand tous les
-  # services répondent sur leurs noms internes.
+  # Lagoon builds images before deploying them. At `docker build` time neither
+  # the CMS nor the database is reachable, so the static site cannot be generated
+  # there. It is generated here, after the rollout, once every service answers on
+  # its internal name.
   post-rollout:
     - run:
-        name: Préparer la base et, en dev, injecter le contenu de démonstration
+        name: Prepare the database and, in dev, seed demo content
         service: cms
         shell: bash
         command: |
           set -e
-          # Crée les collections et construit les index hors transaction : sans
-          # ça, la toute première écriture sur une base vierge échoue sur un
-          # conflit de verrou (voir src/seed/ensureCollections.ts).
+          # Creates the collections and builds their indexes outside a
+          # transaction: without this the very first write against a fresh
+          # database fails on a lock conflict (see
+          # src/seed/ensureCollections.ts).
           pnpm --filter cms db:prepare
 
-          # Le seed passe par l'API locale de Payload : il lui faut la base, pas
-          # le serveur HTTP. Il est idempotent, et ne crée un administrateur que
-          # si la collection users est vide.
+          # The seed goes through Payload's local API: it needs the database, not
+          # the HTTP server. It is idempotent, and only creates an administrator
+          # when the users collection is empty.
           if [ "$LAGOON_ENVIRONMENT_TYPE" = "development" ]; then
             pnpm --filter cms seed
           else
-            echo "Environnement de production : seed ignoré."
+            echo "Production environment: skipping seed."
           fi
 
     - run:
-        name: Attendre que le CMS réponde
+        name: Wait for the CMS to answer
         service: web
         shell: bash
         command: |
@@ -40,16 +41,16 @@ tasks:
             if curl -sf -X POST http://cms:3000/api/graphql \
                  -H 'Content-Type: application/json' \
                  -d '{"query":"{ __typename }"}' > /dev/null; then
-              echo "CMS prêt après ${attempt} tentative(s)."
+              echo "CMS ready after ${attempt} attempt(s)."
               exit 0
             fi
             sleep 5
           done
-          echo "Le CMS n'a pas répondu en 5 minutes." >&2
+          echo "The CMS did not answer within 5 minutes." >&2
           exit 1
 
     - run:
-        name: Construire et publier le site statique
+        name: Build and publish the static site
         service: web
         shell: bash
         command: |
@@ -58,16 +59,16 @@ tasks:
           export SITE_URL="${LAGOON_ROUTE}"
           pnpm --filter web build
 
-          # Publication en deux temps plutôt qu'un `rm -rf` sur le volume servi :
-          # on ne veut pas exposer un répertoire à moitié rempli si la copie
-          # échoue en cours de route.
+          # Publish in two steps rather than `rm -rf` on the served volume: a
+          # copy that fails halfway must not leave a half-filled directory
+          # exposed.
           rm -rf /app/dist.incoming
           cp -R apps/web/dist /app/dist.incoming
           rm -rf /app/dist/*  /app/dist/.[!.]* 2>/dev/null || true
           cp -R /app/dist.incoming/. /app/dist/
           rm -rf /app/dist.incoming
 
-          echo "Publié : $(find /app/dist -name '*.html' | wc -l) page(s)."
+          echo "Published: $(find /app/dist -name '*.html' | wc -l) page(s)."
 
 environments:
   # Production.
@@ -84,7 +85,7 @@ environments:
               tls-acme: true
               insecure: Redirect
 
-  # Environnement de développement partagé. Le seed s'y exécute automatiquement.
+  # Shared development environment. The seed runs automatically here.
   develop:
     routes:
       - web:

@@ -4,14 +4,14 @@ import type { Field, RichTextField } from 'payload'
 import { convertLexicalToMarkdown, editorConfigFactory } from '@payloadcms/richtext-lexical'
 
 /**
- * Champ virtuel qui expose le corps Lexical en Markdown.
+ * Virtual field exposing the Lexical body as Markdown.
  *
- * C'est la charnière entre Payload et Astro : le frontend ne manipule jamais le
- * JSON Lexical, il reçoit du Markdown que le pipeline d'Astro rend lui-même —
- * ce qui lui vaut gratuitement les ancres de titres, la table des matières
- * Starlight et la coloration syntaxique Expressive Code.
+ * This is the hinge between Payload and Astro: the frontend never handles
+ * Lexical JSON, it receives Markdown that Astro's own pipeline renders — which
+ * earns it heading anchors, the Starlight table of contents and Expressive Code
+ * syntax highlighting for free.
  *
- * Le champ est calculé en lecture et supprimé avant écriture : rien n'est stocké.
+ * The field is computed on read and dropped before write: nothing is stored.
  */
 export const markdownField = (richTextFieldName: string): Field => ({
   name: 'markdown',

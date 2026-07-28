@@ -1,17 +1,17 @@
 /**
- * Réglages partagés entre `astro.config.mjs` et `src/content.config.ts`.
+ * Settings shared between `astro.config.mjs` and `src/content.config.ts`.
  *
- * Les locales doivent rester alignées avec `localization` dans
- * `apps/cms/src/payload.config.ts` : le loader interroge Payload avec ces codes.
+ * The locales must stay in sync with `localization` in
+ * `apps/cms/src/payload.config.ts`: the loader queries Payload with these codes.
  */
 export const LOCALES = ['en', 'fr'] as const
 export const DEFAULT_LOCALE = 'en'
 
 /**
- * Endpoint GraphQL de Payload.
+ * Payload's GraphQL endpoint.
  *
- * En local il pointe sur `localhost:3000`. Sur Lagoon, le build Astro tourne en
- * tâche post-rollout et joint le CMS par son nom de service (`http://cms:3000`).
+ * Locally it points at `localhost:3000`. On Lagoon the Astro build runs as a
+ * post-rollout task and reaches the CMS by its service name (`http://cms:3000`).
  */
 export const PAYLOAD_GRAPHQL_URL =
   process.env.PAYLOAD_GRAPHQL_URL ?? 'http://localhost:3000/api/graphql'
@@ -19,7 +19,7 @@ export const PAYLOAD_GRAPHQL_URL =
 export const SITE_URL = process.env.SITE_URL ?? 'http://localhost:4321'
 
 /**
- * Autorise un build alors que le CMS ne contient encore rien de publié.
- * Utile au tout premier déploiement d'un environnement vierge — voir le README.
+ * Allows a build while the CMS has nothing published yet. Useful for the very
+ * first deployment of a blank environment — see the README.
  */
 export const ALLOW_EMPTY = process.env.PAYLOAD_ALLOW_EMPTY === 'true'

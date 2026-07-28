@@ -1,9 +1,9 @@
 import type { Access } from 'payload'
 
 /**
- * Payload interdit tout par défaut aux visiteurs non authentifiés. Le build
- * Astro interroge GraphQL sans session : il faut donc ouvrir la lecture — mais
- * uniquement sur le contenu publié.
+ * Payload denies everything to unauthenticated visitors by default. The Astro
+ * build queries GraphQL without a session, so reads have to be opened up — but
+ * only over published content.
  */
 export const authenticatedOrPublished: Access = ({ req: { user } }) => {
   if (user) return true

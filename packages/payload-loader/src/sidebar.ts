@@ -47,16 +47,14 @@ const SIDEBAR_QUERY = /* GraphQL */ `
 `
 
 /**
- * Construit la sidebar Starlight à partir des catégories Payload.
+ * Builds the Starlight sidebar from Payload categories.
  *
- * Appelée depuis `astro.config.mjs`, donc avant l'exécution du loader : la
- * sidebar fait partie de la configuration de l'intégration, pas du contenu.
- * Les entrées sont déclarées par `slug`, ce qui laisse Starlight préfixer
- * lui-même les URL selon la locale.
+ * Called from `astro.config.mjs`, so before the loader runs: the sidebar belongs
+ * to the integration's configuration, not to the content. Entries are declared
+ * by `slug`, which lets Starlight prefix the URLs per locale itself.
  *
- * En cas d'indisponibilité de Payload, on renvoie une sidebar vide plutôt que
- * de faire échouer le chargement de la config : c'est le loader qui porte
- * l'échec bloquant du build.
+ * If Payload is unavailable we return an empty sidebar rather than failing to
+ * load the config — the hard build failure is the loader's job.
  */
 export async function fetchStarlightSidebar(
   options: FetchSidebarOptions,
@@ -73,15 +71,15 @@ export async function fetchStarlightSidebar(
     )
     byLocale = new Map(results)
   } catch (error) {
-    console.warn(`[sidebar] Payload injoignable, sidebar vide. ${(error as Error).message}`)
+    console.warn(`[sidebar] Payload unreachable, empty sidebar. ${(error as Error).message}`)
     return []
   }
 
   const base = byLocale.get(defaultLocale)
   if (!base) return []
 
-  // Slugs des documents rattachés à chaque catégorie, dans l'ordre renvoyé par
-  // Payload (tri sur `sidebarOrder`).
+  // Slugs of the documents attached to each category, in the order Payload
+  // returned them (sorted on `sidebarOrder`).
   const slugsByCategory = new Map<string, string[]>()
   const orphans: string[] = []
   for (const doc of base.Docs.docs) {
@@ -115,7 +113,7 @@ export async function fetchStarlightSidebar(
   }
 
   if (orphans.length) {
-    groups.push({ label: 'Divers', items: orphans.map((slug) => ({ slug })) })
+    groups.push({ label: 'Other', items: orphans.map((slug) => ({ slug })) })
   }
 
   return groups

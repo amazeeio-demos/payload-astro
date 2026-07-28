@@ -2,10 +2,9 @@ import type { CollectionConfig } from 'payload'
 
 import { anyone, authenticated } from '../access'
 
-/** Groupes de la sidebar Starlight. */
+/** Starlight sidebar groups. */
 export const Categories: CollectionConfig = {
   slug: 'categories',
-  labels: { singular: 'Catégorie', plural: 'Catégories' },
   admin: {
     useAsTitle: 'name',
     defaultColumns: ['name', 'slug', 'order'],
@@ -30,14 +29,14 @@ export const Categories: CollectionConfig = {
       required: true,
       unique: true,
       index: true,
-      admin: { description: 'Identifiant stable, non traduit.' },
+      admin: { description: 'Stable identifier, never translated.' },
     },
     {
       name: 'order',
       type: 'number',
       required: true,
       defaultValue: 0,
-      admin: { description: 'Ordre du groupe dans la sidebar (croissant).' },
+      admin: { description: 'Position of the group in the sidebar (ascending).' },
     },
   ],
 }

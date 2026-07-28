@@ -5,8 +5,8 @@ import { markdownField } from '../fields/markdown'
 
 export const Docs: CollectionConfig = {
   slug: 'docs',
-  labels: { singular: 'Page de doc', plural: 'Pages de doc' },
-  // Noms explicites : le loader Astro les référence en dur dans ses requêtes.
+  labels: { singular: 'Doc page', plural: 'Doc pages' },
+  // Explicit names: the Astro loader hardcodes them in its queries.
   graphQL: {
     singularName: 'Doc',
     pluralName: 'Docs',
@@ -40,14 +40,14 @@ export const Docs: CollectionConfig = {
       index: true,
       admin: {
         position: 'sidebar',
-        description: "Segment d'URL, non traduit — partagé par toutes les locales.",
+        description: 'URL segment, never translated — shared across all locales.',
       },
     },
     {
       name: 'description',
       type: 'textarea',
       localized: true,
-      admin: { description: 'Résumé affiché en méta-description et dans la recherche.' },
+      admin: { description: 'Summary used as meta description and in search results.' },
     },
     {
       name: 'category',
@@ -61,7 +61,7 @@ export const Docs: CollectionConfig = {
       localized: true,
       admin: {
         position: 'sidebar',
-        description: 'Libellé court dans la sidebar. Vide = titre de la page.',
+        description: 'Short label in the sidebar. Empty means the page title.',
       },
     },
     {
@@ -71,7 +71,7 @@ export const Docs: CollectionConfig = {
       defaultValue: 0,
       admin: {
         position: 'sidebar',
-        description: 'Ordre au sein de la catégorie (croissant).',
+        description: 'Position within the category (ascending).',
       },
     },
     {
@@ -80,7 +80,7 @@ export const Docs: CollectionConfig = {
       required: true,
       localized: true,
     },
-    // Dérivé de `body`, exposé en GraphQL, jamais stocké.
+    // Derived from `body`, exposed over GraphQL, never stored.
     markdownField('body'),
   ],
 }

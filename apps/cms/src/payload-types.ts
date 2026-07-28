@@ -129,20 +129,20 @@ export interface Doc {
   id: string;
   title: string;
   /**
-   * Segment d'URL, non traduit — partagé par toutes les locales.
+   * URL segment, never translated — shared across all locales.
    */
   slug: string;
   /**
-   * Résumé affiché en méta-description et dans la recherche.
+   * Summary used as meta description and in search results.
    */
   description?: string | null;
   category?: (string | null) | Category;
   /**
-   * Libellé court dans la sidebar. Vide = titre de la page.
+   * Short label in the sidebar. Empty means the page title.
    */
   sidebarLabel?: string | null;
   /**
-   * Ordre au sein de la catégorie (croissant).
+   * Position within the category (ascending).
    */
   sidebarOrder: number;
   body: {
@@ -173,11 +173,11 @@ export interface Category {
   id: string;
   name: string;
   /**
-   * Identifiant stable, non traduit.
+   * Stable identifier, never translated.
    */
   slug: string;
   /**
-   * Ordre du groupe dans la sidebar (croissant).
+   * Position of the group in the sidebar (ascending).
    */
   order: number;
   updatedAt: string;

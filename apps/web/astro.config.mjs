@@ -2,14 +2,14 @@
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-// `.env` unique à la racine du monorepo. Absent en conteneur : Lagoon injecte
-// directement les variables au moment de la tâche post-rollout.
+// The single `.env` at the monorepo root. Absent in a container: Lagoon injects
+// the variables directly when the post-rollout task runs.
 try {
   process.loadEnvFile(
     path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../.env'),
   )
 } catch {
-  // Pas de .env : les variables viennent de l'environnement.
+  // No .env: the variables come from the environment.
 }
 
 import { defineConfig } from 'astro/config'
@@ -18,8 +18,8 @@ import { fetchStarlightSidebar } from '@repo/payload-loader'
 
 import { DEFAULT_LOCALE, LOCALES, PAYLOAD_GRAPHQL_URL, SITE_URL } from './src/site'
 
-// La sidebar fait partie de la configuration de l'intégration, pas du contenu :
-// elle doit donc être connue avant que le loader ne tourne, d'où cet appel ici.
+// The sidebar belongs to the integration's configuration, not to the content, so
+// it has to be known before the loader runs — hence this call here.
 const sidebar = await fetchStarlightSidebar({
   endpoint: PAYLOAD_GRAPHQL_URL,
   locales: LOCALES,
@@ -32,7 +32,7 @@ export default defineConfig({
   integrations: [
     starlight({
       title: 'Docs',
-      // `root` = locale par défaut servie sans préfixe d'URL.
+      // `root` = default locale, served without a URL prefix.
       defaultLocale: 'root',
       locales: {
         root: { label: 'English', lang: 'en' },

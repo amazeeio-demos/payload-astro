@@ -1,7 +1,7 @@
 /**
- * Seed idempotent : peut être relancé sans dupliquer ni écraser.
+ * Idempotent seed: can be re-run without duplicating or overwriting anything.
  *
- * Passe par l'API locale de Payload — pas de HTTP, pas de serveur à démarrer.
+ * Goes through Payload's local API — no HTTP, no server to start.
  */
 import { convertMarkdownToLexical, editorConfigFactory } from '@payloadcms/richtext-lexical'
 import { getPayload, type RichTextField } from 'payload'
@@ -13,34 +13,34 @@ import { ensureCollections } from './ensureCollections'
 const payload = await getPayload({ config })
 await ensureCollections(payload)
 
-// L'éditeur du champ `body`, pas l'éditeur Lexical par défaut : c'est lui qui
-// porte le `CodeBlock`, donc le convertisseur qui sait lire les clôtures ```.
+// The `body` field's editor, not the default Lexical one: it is the one carrying
+// `CodeBlock`, hence the converter that knows how to read ``` fences.
 const bodyField = payload.collections.docs.config.fields.find(
   (field): field is RichTextField => 'name' in field && field.name === 'body',
 )
-if (!bodyField) throw new Error("Champ `body` introuvable sur la collection docs")
+if (!bodyField) throw new Error('No `body` field on the docs collection')
 
 const editorConfig = await editorConfigFactory.fromField({ field: bodyField })
 const toLexical = (markdown: string) => convertMarkdownToLexical({ editorConfig, markdown })
 
-// --- Administrateur ---------------------------------------------------------
+// --- Administrator ----------------------------------------------------------
 
 const email = process.env.SEED_ADMIN_EMAIL
 const password = process.env.SEED_ADMIN_PASSWORD
 
 if (!email || !password) {
-  throw new Error('SEED_ADMIN_EMAIL et SEED_ADMIN_PASSWORD doivent être définis dans .env')
+  throw new Error('SEED_ADMIN_EMAIL and SEED_ADMIN_PASSWORD must be set in .env')
 }
 
 const existingUsers = await payload.count({ collection: 'users' })
 if (existingUsers.totalDocs === 0) {
   await payload.create({ collection: 'users', data: { email, password } })
-  console.log(`[seed] administrateur créé : ${email}`)
+  console.log(`[seed] administrator created: ${email}`)
 } else {
-  console.log('[seed] un utilisateur existe déjà, création ignorée')
+  console.log('[seed] a user already exists, skipping creation')
 }
 
-// --- Catégories -------------------------------------------------------------
+// --- Categories -------------------------------------------------------------
 
 const categoryIds = new Map<string, string>()
 
@@ -69,10 +69,10 @@ for (const category of CATEGORIES) {
     data: { name: category.name.fr },
   })
   categoryIds.set(category.slug, String(created.id))
-  console.log(`[seed] catégorie « ${category.slug} »`)
+  console.log(`[seed] category "${category.slug}"`)
 }
 
-// --- Pages de doc -----------------------------------------------------------
+// --- Doc pages --------------------------------------------------------------
 
 let created = 0
 
@@ -87,7 +87,7 @@ for (const doc of DOCS) {
   if (found.docs.length > 0) continue
 
   const categoryId = categoryIds.get(doc.category)
-  if (!categoryId) throw new Error(`Catégorie inconnue : ${doc.category}`)
+  if (!categoryId) throw new Error(`Unknown category: ${doc.category}`)
 
   const page = await payload.create({
     collection: 'docs',
@@ -116,8 +116,8 @@ for (const doc of DOCS) {
   })
 
   created++
-  console.log(`[seed] page « ${doc.slug} » (en + fr)`)
+  console.log(`[seed] page "${doc.slug}" (en + fr)`)
 }
 
-console.log(`[seed] terminé — ${created} page(s) créée(s), ${DOCS.length - created} déjà présente(s)`)
+console.log(`[seed] done — ${created} page(s) created, ${DOCS.length - created} already present`)
 process.exit(0)

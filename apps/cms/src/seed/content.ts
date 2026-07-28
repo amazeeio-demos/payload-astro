@@ -1,4 +1,4 @@
-/** Contenu de démonstration, écrit en Markdown puis converti en Lexical. */
+/** Demo content, authored in Markdown then converted to Lexical. */
 
 export interface SeedCategory {
   slug: string

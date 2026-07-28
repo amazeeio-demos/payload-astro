@@ -1,7 +1,7 @@
 node_modules/
 .pnpm-store/
 
-# Base MongoDB locale (mongodb-memory-server) et binaires mongod téléchargés
+# Local MongoDB data (mongodb-memory-server) and downloaded mongod binaries
 .data/
 
 # Builds
@@ -10,7 +10,7 @@ dist/
 .astro/
 *.tsbuildinfo
 
-# Uploads Payload en local
+# Payload uploads in local development
 apps/cms/media/
 
 # Env

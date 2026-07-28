@@ -23,8 +23,8 @@ const nextConfig: NextConfig = {
 
     return webpackConfig
   },
-  // Racine du monorepo : Turbopack doit voir le lockfile et le store pnpm
-  // partagés, sinon il n'arrive pas à résoudre `next` depuis `src/app`.
+  // Monorepo root: Turbopack needs to see the shared lockfile and pnpm store,
+  // otherwise it fails to resolve `next` from `src/app`.
   turbopack: {
     root: path.resolve(dirname, '../..'),
   },

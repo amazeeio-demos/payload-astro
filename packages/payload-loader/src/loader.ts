@@ -2,18 +2,18 @@ import type { Loader } from 'astro/loaders'
 import { graphqlRequest } from './graphql.js'
 
 export interface PayloadDocsLoaderOptions {
-  /** Endpoint GraphQL de Payload, ex. http://localhost:3000/api/graphql */
+  /** Payload's GraphQL endpoint, e.g. http://localhost:3000/api/graphql */
   endpoint: string
-  /** Locales Payload à charger. */
+  /** Payload locales to load. */
   locales: readonly string[]
-  /** Locale servie à la racine du site, sans préfixe d'URL. */
+  /** Locale served at the site root, without a URL prefix. */
   defaultLocale: string
-  /** Garde-fou : au-delà, il faudra paginer. */
+  /** Guard rail: past this, pagination becomes necessary. */
   limit?: number
   /**
-   * Par défaut, un CMS sans contenu publié fait échouer le build — un site vide
-   * se déploie sans erreur et casse la production en silence. À basculer pour le
-   * tout premier déploiement d'un environnement dont le CMS est encore vierge.
+   * By default a CMS with nothing published fails the build — an empty site
+   * deploys without error and breaks production silently. Flip this for the very
+   * first deployment of an environment whose CMS is still untouched.
    */
   allowEmpty?: boolean
 }
@@ -46,9 +46,9 @@ const DOCS_QUERY = /* GraphQL */ `
 `
 
 /**
- * Astro appelle le loader avec une locale et attend en retour des entrées dont
- * l'`id` porte le préfixe de langue : Starlight en déduit le routage i18n
- * (`getting-started` pour la locale racine, `fr/getting-started` sinon).
+ * Astro calls the loader once per locale and expects entries whose `id` carries
+ * the language prefix: Starlight derives its i18n routing from it
+ * (`getting-started` for the root locale, `fr/getting-started` otherwise).
  */
 export function payloadDocsLoader(options: PayloadDocsLoaderOptions): Loader {
   const { endpoint, locales, defaultLocale, limit = 500, allowEmpty = false } = options
@@ -57,9 +57,7 @@ export function payloadDocsLoader(options: PayloadDocsLoaderOptions): Loader {
     name: 'payload-docs',
     async load({ store, parseData, renderMarkdown, generateDigest, logger }) {
       if (!endpoint) {
-        throw new Error(
-          'payloadDocsLoader : endpoint manquant. Renseignez PAYLOAD_GRAPHQL_URL dans .env',
-        )
+        throw new Error('payloadDocsLoader: no endpoint. Set PAYLOAD_GRAPHQL_URL in .env')
       }
 
       store.clear()
@@ -76,20 +74,20 @@ export function payloadDocsLoader(options: PayloadDocsLoaderOptions): Loader {
 
         if (totalDocs > limit) {
           logger.warn(
-            `${locale} : ${totalDocs} documents pour une limite de ${limit}. Certains sont ignorés — augmentez \`limit\` ou paginez.`,
+            `${locale}: ${totalDocs} documents against a limit of ${limit}. Some are being dropped — raise \`limit\` or paginate.`,
           )
         }
 
         for (const doc of docs) {
           const id = locale === defaultLocale ? doc.slug : `${locale}/${doc.slug}`
 
-          // Starlight suppose un loader basé sur des fichiers et déréférence
-          // `entry.filePath!`. On fournit un chemin synthétique cohérent.
+          // Starlight assumes a file-based loader and dereferences
+          // `entry.filePath!`. We supply a consistent synthetic path.
           const filePath = `src/content/docs/${id}.md`
 
-          // `parseData` applique le schéma de la collection. Indispensable :
-          // `docsSchema()` définit `draft: false` par défaut, et Starlight écarte
-          // en production toute entrée dont `draft` n'est pas exactement `false`.
+          // `parseData` applies the collection schema. This is essential:
+          // `docsSchema()` defines `draft: false` as a default, and in production
+          // Starlight discards any entry whose `draft` is not exactly `false`.
           const parsed = await parseData({
             id,
             filePath,
@@ -110,17 +108,17 @@ export function payloadDocsLoader(options: PayloadDocsLoaderOptions): Loader {
           total++
         }
 
-        logger.info(`${locale} : ${docs.length} document(s)`)
+        logger.info(`${locale}: ${docs.length} document(s)`)
       }
 
       if (total === 0) {
-        const message = `aucun document publié trouvé sur ${endpoint}. Lancez \`pnpm seed\` ou publiez du contenu.`
+        const message = `no published document found at ${endpoint}. Run \`pnpm seed\` or publish some content.`
         if (!allowEmpty) {
           throw new Error(
-            `payloadDocsLoader : ${message} Passez PAYLOAD_ALLOW_EMPTY=true pour construire malgré tout.`,
+            `payloadDocsLoader: ${message} Set PAYLOAD_ALLOW_EMPTY=true to build anyway.`,
           )
         }
-        logger.warn(`Site construit à vide : ${message}`)
+        logger.warn(`Building an empty site: ${message}`)
       }
     },
   }

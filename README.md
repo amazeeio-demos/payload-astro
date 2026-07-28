@@ -1,129 +1,126 @@
 # astro-payload-lagoon
 
-POC : blog de documentation développeurs, contenu géré dans **Payload CMS**,
-site rendu statiquement par **Astro / Starlight**, déployé sur **Lagoon**
-(amazee.io).
+Proof of concept: a developer documentation site with content managed in
+**Payload CMS**, rendered statically by **Astro / Starlight**, deployed on
+**Lagoon** (amazee.io).
 
-Le contenu transite en **GraphQL**. Le développement local ne demande ni Docker
-ni MongoDB installé.
+Content travels over **GraphQL**. Local development needs neither Docker nor an
+installed MongoDB.
 
 ```
-apps/cms                  Payload 3 sur Next.js — admin, API, GraphQL
-apps/web                  Astro 7 + Starlight — site statique
-packages/payload-loader    Loader Content Layer + sidebar, tous deux en GraphQL
-packages/mongo-dev         MongoDB local (replica set mono-nœud, sans Docker)
-lagoon/                    Dockerfiles de déploiement
-docker-compose.yml         Manifeste de services Lagoon (pas pour le local)
-.lagoon.yml                Routes et tâches post-rollout
+apps/cms                   Payload 3 on Next.js — admin, API, GraphQL
+apps/web                   Astro 7 + Starlight — static site
+packages/payload-loader    Content Layer loader and sidebar, both over GraphQL
+packages/mongo-dev         Local MongoDB (single-node replica set, no Docker)
+lagoon/                    Deployment Dockerfiles
+docker-compose.yml         Lagoon service manifest (not for local use)
+.lagoon.yml                Routes and post-rollout tasks
 ```
 
-## Démarrer
+## Getting started
 
 ```bash
 cp .env.example .env
-pnpm install          # télécharge un binaire mongod au premier lancement
+pnpm install          # downloads a mongod binary on first run
 pnpm dev              # MongoDB + Payload (:3000) + Astro (:4321)
 ```
 
-Dans un autre terminal, une seule fois :
+In another terminal, once:
 
 ```bash
-pnpm seed             # administrateur, 2 catégories, 6 pages en/fr
+pnpm seed             # admin user, 2 categories, 6 pages in en/fr
 ```
 
-- Administration : <http://localhost:3000/admin>
-- Site : <http://localhost:4321>
+- Admin panel: <http://localhost:3000/admin>
+- Site: <http://localhost:4321>
 
-Les identifiants de l'administrateur viennent de `SEED_ADMIN_EMAIL` et
-`SEED_ADMIN_PASSWORD` dans `.env`.
+Admin credentials come from `SEED_ADMIN_EMAIL` and `SEED_ADMIN_PASSWORD` in
+`.env`.
 
-Le site est statique : après une modification dans l'admin, relancez
-`astro dev` ou `pnpm build:web` pour la voir apparaître.
+The site is static: after editing in the admin panel, restart `astro dev` or run
+`pnpm build:web` to see the change.
 
-> Astro 7 détecte les environnements d'agent de code (Claude Code, Cursor…) et y
-> démarre `astro dev` en arrière-plan, détaché. Sous `concurrently` le panneau
-> `web` rend alors la main aussitôt, et un serveur orphelin garde le port 4321.
-> `pnpm --filter web exec astro dev stop` le libère. Dans un terminal normal,
-> le comportement est celui attendu.
+> Astro 7 detects coding-agent environments (Claude Code, Cursor, …) and starts
+> `astro dev` there as a detached background process. Under `concurrently` the
+> `web` pane then exits immediately and an orphaned server keeps port 4321.
+> `pnpm --filter web exec astro dev stop` releases it. In a normal terminal the
+> behaviour is the expected one.
 
-`pnpm build` et `pnpm typecheck` interrogent le CMS : ils demandent que
-`pnpm dev` tourne (ou au moins MongoDB et Payload).
+`pnpm build` and `pnpm typecheck` query the CMS, so they need `pnpm dev` running
+(or at least MongoDB and Payload).
 
-## Comment le contenu arrive dans Astro
+## How content reaches Astro
 
-Le corps des pages est du rich text Lexical. Un champ **virtuel** `markdown` le
-convertit à la lecture (`apps/cms/src/fields/markdown.ts`) et l'expose en
-GraphQL — rien n'est stocké en double.
+Page bodies are Lexical rich text. A **virtual** `markdown` field converts them
+on read (`apps/cms/src/fields/markdown.ts`) and exposes the result over GraphQL —
+nothing is stored twice.
 
-Côté Astro, `payloadDocsLoader` interroge ce champ et confie le Markdown à
-`renderMarkdown()`, le pipeline d'Astro. Starlight récupère donc des ancres de
-titres, une table des matières et une coloration syntaxique Expressive Code sans
-qu'on ait à les recréer.
+On the Astro side, `payloadDocsLoader` queries that field and hands the Markdown
+to `renderMarkdown()`, Astro's own pipeline. Starlight therefore gets heading
+anchors, a table of contents and Expressive Code syntax highlighting without any
+of it being reimplemented.
 
-Deux détails non documentés côté Starlight, tous deux commentés dans
-`packages/payload-loader/src/loader.ts` :
+Two details Starlight does not document, both commented in
+`packages/payload-loader/src/loader.ts`:
 
-- il faut passer par `parseData()`, sinon le défaut `draft: false` du schéma
-  n'est pas appliqué et Starlight écarte toutes les entrées en production ;
-- Starlight suppose un loader basé sur des fichiers et déréférence
-  `entry.filePath!` — on fournit un chemin synthétique.
+- the loader must go through `parseData()`, otherwise the schema's `draft: false`
+  default is never applied and Starlight discards every entry in production;
+- Starlight assumes a file-based loader and dereferences `entry.filePath!`, so we
+  supply a synthetic path.
 
-L'éditeur Lexical n'a pas de bloc de code natif. On active `CodeBlock`, le bloc
-fourni par Payload, avec une liste de langages restreinte à des identifiants que
-Shiki reconnaît (`bash` et non `shell`, cf. `apps/cms/src/payload.config.ts`).
+The Lexical editor has no built-in code block. We enable `CodeBlock`, the block
+Payload ships, with a language list restricted to identifiers Shiki recognises
+(`bash` rather than `shell` — see `apps/cms/src/payload.config.ts`).
 
 ## i18n
 
-Les locales sont déclarées deux fois et doivent rester alignées :
-`localization` dans `apps/cms/src/payload.config.ts`, et `LOCALES` dans
-`apps/web/src/site.ts`.
+Locales are declared twice and must stay in sync: `localization` in
+`apps/cms/src/payload.config.ts`, and `LOCALES` in `apps/web/src/site.ts`.
 
-L'anglais est servi à la racine, le français sous `/fr/`. Une page non traduite
-retombe sur l'anglais au lieu de disparaître — comportement natif de Starlight.
+English is served at the root, French under `/fr/`. An untranslated page falls
+back to English instead of disappearing — Starlight's native behaviour.
 
-## Déploiement Lagoon
+## Deploying to Lagoon
 
-Trois services : `cms` (`node`), `web` (`node-persistent`) et `mongodb`.
+Three services: `cms` (`node`), `web` (`node-persistent`) and `mongodb`.
 
-Lagoon construit les images **avant** de les déployer : au moment du
-`docker build`, le CMS n'est pas joignable et le site statique ne peut donc pas
-être généré. Il l'est après le rollout, par les tâches `post-rollout` de
-`.lagoon.yml`, quand le service `cms` répond sur son nom interne. Le résultat est
-déposé dans `/app/dist`, un volume persistant — d'où `node-persistent` plutôt
-que `nginx` : Lagoon n'a pas de type `nginx-persistent`.
+Lagoon builds images **before** deploying them: at `docker build` time the CMS is
+unreachable, so the static site cannot be generated there. It is generated after
+the rollout instead, by the `post-rollout` tasks in `.lagoon.yml`, once the `cms`
+service answers on its internal name. The output lands in `/app/dist`, a
+persistent volume — hence `node-persistent` rather than `nginx`: Lagoon has no
+`nginx-persistent` service type.
 
-Avant le premier déploiement :
+Before the first deployment:
 
-1. Remplacer `docs.example.com` par les vrais domaines dans `.lagoon.yml`.
-2. Définir les variables d'environnement du projet (elles ne vont pas dans le
-   dépôt) :
+1. Replace `docs.example.com` with the real domains in `.lagoon.yml`.
+2. Set the project's environment variables (they do not belong in the repo):
 
    ```bash
-   lagoon add variable -p <projet> -e main -N PAYLOAD_SECRET  -V "<secret>" -S runtime
-   lagoon add variable -p <projet> -e main -N SEED_ADMIN_EMAIL -V "..."      -S runtime
+   lagoon add variable -p <project> -e main -N PAYLOAD_SECRET   -V "<secret>" -S runtime
+   lagoon add variable -p <project> -e main -N SEED_ADMIN_EMAIL -V "..."      -S runtime
    ```
 
-3. Vérifier les variables injectées par le service MongoDB :
+3. Check the variables injected by the MongoDB service:
 
    ```bash
-   lagoon get environment-variables -p <projet> -e main
+   lagoon get environment-variables -p <project> -e main
    ```
 
-   Toute l'incertitude sur leurs noms est isolée dans
-   `apps/cms/src/lib/mongoUri.ts` : si le cluster en utilise d'autres, seul ce
-   fichier change.
+   All the uncertainty about their names is isolated in
+   `apps/cms/src/lib/mongoUri.ts`: if the cluster uses different ones, that file
+   is the only thing to change.
 
-Sur un environnement de production vierge, le seed est volontairement ignoré :
-il n'y a donc aucun contenu publié, et le loader fait échouer le build plutôt
-que de publier un site vide. Pour ce tout premier déploiement, soit vous
-publiez une page depuis l'admin puis relancez le déploiement, soit vous posez
-`PAYLOAD_ALLOW_EMPTY=true` le temps du premier build.
+On a fresh production environment the seed is deliberately skipped, so nothing is
+published and the loader fails the build rather than shipping an empty site. For
+that very first deployment either publish a page from the admin panel and
+redeploy, or set `PAYLOAD_ALLOW_EMPTY=true` for the initial build.
 
-Publier du contenu ne reconstruit pas le site tout seul : relancez un
-déploiement, ou branchez un hook `afterChange` de Payload sur l'API Lagoon.
+Publishing content does not rebuild the site on its own: trigger a redeploy, or
+wire a Payload `afterChange` hook to the Lagoon API.
 
-## Points restés hors périmètre
+## Out of scope
 
-- Persistance des médias Payload en production (volume dédié ou S3).
-- Prévisualisation des brouillons depuis Astro.
-- Pipeline CI.
+- Payload media persistence in production (dedicated volume or S3).
+- Draft preview from Astro.
+- CI pipeline.

@@ -1,4 +1,4 @@
-/** Client GraphQL minimal — `fetch` natif, aucune dépendance. */
+/** Minimal GraphQL client — native `fetch`, no dependencies. */
 
 export interface GraphQLError {
   message: string
@@ -30,14 +30,14 @@ export async function graphqlRequest<T>(
     })
   } catch (cause) {
     throw new PayloadGraphQLError(
-      `Payload injoignable sur ${endpoint} : ${(cause as Error).message}`,
+      `Payload unreachable at ${endpoint}: ${(cause as Error).message}`,
       endpoint,
     )
   }
 
   if (!response.ok) {
     throw new PayloadGraphQLError(
-      `Payload a répondu ${response.status} ${response.statusText}`,
+      `Payload answered ${response.status} ${response.statusText}`,
       endpoint,
     )
   }
@@ -46,13 +46,13 @@ export async function graphqlRequest<T>(
 
   if (body.errors?.length) {
     throw new PayloadGraphQLError(
-      `Erreurs GraphQL : ${body.errors.map((e) => e.message).join(' | ')}`,
+      `GraphQL errors: ${body.errors.map((e) => e.message).join(' | ')}`,
       endpoint,
     )
   }
 
   if (!body.data) {
-    throw new PayloadGraphQLError('Réponse GraphQL sans données', endpoint)
+    throw new PayloadGraphQLError('GraphQL response carried no data', endpoint)
   }
 
   return body.data

@@ -1,9 +1,9 @@
-# Site statique Astro — service `web`, écoute sur le port 3000.
+# Static Astro site — service `web`, listens on port 3000.
 #
-# L'image embarque la chaîne de build Astro sans lancer le build : à ce moment-là
-# le CMS n'existe pas encore. C'est la tâche post-rollout de `.lagoon.yml` qui
-# construira le site, une fois le service `cms` joignable, et déposera le
-# résultat dans /app/dist — un volume persistant.
+# The image carries the Astro build toolchain without running the build: at that
+# point the CMS does not exist yet. The post-rollout task in `.lagoon.yml` builds
+# the site once the `cms` service is reachable and drops the output into
+# /app/dist — a persistent volume.
 ARG LAGOON_VERSION=26.7.0
 
 FROM uselagoon/node-24-builder:${LAGOON_VERSION} AS builder
@@ -31,8 +31,8 @@ RUN corepack enable
 
 COPY --from=builder /app /app
 
-# Serveur de fichiers statiques. Le répertoire est vide dans l'image : Lagoon y
-# monte le volume persistant, que la tâche post-rollout remplit.
+# Static file server. The directory is empty in the image: Lagoon mounts the
+# persistent volume over it, and the post-rollout task fills it.
 RUN mkdir -p /app/dist
 
 ENV NODE_ENV=production

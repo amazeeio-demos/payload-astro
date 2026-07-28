@@ -1,9 +1,9 @@
 /**
- * Prépare la base sans y injecter de contenu.
+ * Prepares the database without inserting any content.
  *
- * Utile en production, où l'on ne veut pas de contenu de démonstration mais où
- * l'on veut quand même éviter que la toute première écriture ne se heurte à la
- * création paresseuse des collections par Mongoose. Voir `ensureCollections`.
+ * Useful in production, where we do not want demo content but still want to
+ * avoid the very first write colliding with Mongoose's lazy collection creation.
+ * See `ensureCollections`.
  */
 import { getPayload } from 'payload'
 
@@ -13,5 +13,5 @@ import { ensureCollections } from './ensureCollections'
 const payload = await getPayload({ config })
 await ensureCollections(payload)
 
-console.log('[db] collections et index prêts')
+console.log('[db] collections and indexes ready')
 process.exit(0)
