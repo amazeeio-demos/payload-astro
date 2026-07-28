@@ -1,0 +1,24 @@
+{
+  "name": "astro-payload-lagoon",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.33.4",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "concurrently -n db,cms,web -c blue,magenta,green \"pnpm dev:db\" \"pnpm dev:cms\" \"pnpm dev:web\"",
+    "dev:db": "pnpm --filter @repo/mongo-dev start",
+    "dev:cms": "pnpm --filter cms dev",
+    "dev:web": "pnpm --filter web dev",
+    "seed": "pnpm --filter cms seed",
+    "build": "pnpm --filter cms build && pnpm --filter web build",
+    "build:web": "pnpm --filter web build",
+    "generate:types": "pnpm --filter cms generate:types",
+    "typecheck": "pnpm -r typecheck"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1",
+    "typescript": "5.7.3"
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "name": "web",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "serve": "sirv /app/dist --host 0.0.0.0 --port 3000 --etag",
+    "typecheck": "astro check"
+  },
+  "dependencies": {
+    "@astrojs/starlight": "0.41.5",
+    "@repo/payload-loader": "workspace:*",
+    "astro": "7.1.5",
+    "sirv-cli": "^3.0.1"
+  },
+  "devDependencies": {
+    "@astrojs/check": "^0.9.4",
+    "typescript": "5.7.3"
+  }
+}

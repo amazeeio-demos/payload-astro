@@ -1,0 +1,21 @@
+node_modules/
+.pnpm-store/
+
+# Base MongoDB locale (mongodb-memory-server) et binaires mongod téléchargés
+.data/
+
+# Builds
+dist/
+.next/
+.astro/
+*.tsbuildinfo
+
+# Uploads Payload en local
+apps/cms/media/
+
+# Env
+.env
+.env.*
+!.env.example
+
+.DS_Store

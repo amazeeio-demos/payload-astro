@@ -1,0 +1,35 @@
+# Manifeste de déploiement Lagoon.
+#
+# Ce fichier n'est pas destiné à être lancé en local : le développement se fait
+# sans Docker, via `pnpm dev`. Lagoon le lit pour savoir quels services créer et
+# quelle image construire pour chacun (labels `lagoon.*`).
+
+services:
+  # Payload CMS. `node` expose le port 3000 et reçoit une route publique.
+  cms:
+    build:
+      context: .
+      dockerfile: lagoon/cms.dockerfile
+    labels:
+      lagoon.type: node
+    depends_on:
+      - mongodb
+
+  # Site statique Astro. `node-persistent` parce que le contenu de /app/dist est
+  # produit après le déploiement, par la tâche post-rollout : il doit survivre
+  # aux redémarrages du pod.
+  web:
+    build:
+      context: .
+      dockerfile: lagoon/web.dockerfile
+    labels:
+      lagoon.type: node-persistent
+      lagoon.persistent: /app/dist
+      lagoon.persistent.size: 1Gi
+
+  # Méta-type : Lagoon choisit `mongodb-single` en développement et
+  # `mongodb-dbaas` en production si le cluster expose un opérateur DBaaS.
+  mongodb:
+    image: uselagoon/mongo:latest
+    labels:
+      lagoon.type: mongodb

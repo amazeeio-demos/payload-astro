@@ -1,0 +1,97 @@
+docker-compose-yaml: docker-compose.yml
+
+# Injecte LAGOON_GIT_SHA dans les conteneurs, utile pour tracer une build.
+environment_variables:
+  git_sha: 'true'
+
+tasks:
+  # Lagoon construit les images avant de les déployer. Au moment du `docker
+  # build`, ni le CMS ni la base ne sont joignables : le site statique ne peut
+  # donc pas être généré là. On le génère ici, après le rollout, quand tous les
+  # services répondent sur leurs noms internes.
+  post-rollout:
+    - run:
+        name: Préparer la base et, en dev, injecter le contenu de démonstration
+        service: cms
+        shell: bash
+        command: |
+          set -e
+          # Crée les collections et construit les index hors transaction : sans
+          # ça, la toute première écriture sur une base vierge échoue sur un
+          # conflit de verrou (voir src/seed/ensureCollections.ts).
+          pnpm --filter cms db:prepare
+
+          # Le seed passe par l'API locale de Payload : il lui faut la base, pas
+          # le serveur HTTP. Il est idempotent, et ne crée un administrateur que
+          # si la collection users est vide.
+          if [ "$LAGOON_ENVIRONMENT_TYPE" = "development" ]; then
+            pnpm --filter cms seed
+          else
+            echo "Environnement de production : seed ignoré."
+          fi
+
+    - run:
+        name: Attendre que le CMS réponde
+        service: web
+        shell: bash
+        command: |
+          set -e
+          for attempt in $(seq 1 60); do
+            if curl -sf -X POST http://cms:3000/api/graphql \
+                 -H 'Content-Type: application/json' \
+                 -d '{"query":"{ __typename }"}' > /dev/null; then
+              echo "CMS prêt après ${attempt} tentative(s)."
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "Le CMS n'a pas répondu en 5 minutes." >&2
+          exit 1
+
+    - run:
+        name: Construire et publier le site statique
+        service: web
+        shell: bash
+        command: |
+          set -e
+          export PAYLOAD_GRAPHQL_URL="http://cms:3000/api/graphql"
+          export SITE_URL="${LAGOON_ROUTE}"
+          pnpm --filter web build
+
+          # Publication en deux temps plutôt qu'un `rm -rf` sur le volume servi :
+          # on ne veut pas exposer un répertoire à moitié rempli si la copie
+          # échoue en cours de route.
+          rm -rf /app/dist.incoming
+          cp -R apps/web/dist /app/dist.incoming
+          rm -rf /app/dist/*  /app/dist/.[!.]* 2>/dev/null || true
+          cp -R /app/dist.incoming/. /app/dist/
+          rm -rf /app/dist.incoming
+
+          echo "Publié : $(find /app/dist -name '*.html' | wc -l) page(s)."
+
+environments:
+  # Production.
+  main:
+    monitoring_urls:
+      - 'docs.example.com'
+    routes:
+      - web:
+          - 'docs.example.com':
+              tls-acme: true
+              insecure: Redirect
+      - cms:
+          - 'admin.docs.example.com':
+              tls-acme: true
+              insecure: Redirect
+
+  # Environnement de développement partagé. Le seed s'y exécute automatiquement.
+  develop:
+    routes:
+      - web:
+          - 'develop.docs.example.com':
+              tls-acme: true
+              insecure: Redirect
+      - cms:
+          - 'admin.develop.docs.example.com':
+              tls-acme: true
+              insecure: Redirect
