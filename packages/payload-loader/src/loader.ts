@@ -1,13 +1,11 @@
 import type { Loader } from 'astro/loaders'
-import { graphqlRequest } from './graphql.js'
+import { DocsByLocaleDocument, graphqlRequest, type LocaleInputType } from '@repo/graphql'
 
 export interface PayloadDocsLoaderOptions {
   /** Payload's GraphQL endpoint, e.g. http://localhost:3000/api/graphql */
   endpoint: string
-  /** Payload locales to load. */
-  locales: readonly string[]
-  /** Locale served at the site root, without a URL prefix. */
-  defaultLocale: string
+  /** Payload locales to load — the codes its schema declares. */
+  locales: readonly LocaleInputType[]
   /** Guard rail: past this, pagination becomes necessary. */
   limit?: number
   /**
@@ -18,44 +16,20 @@ export interface PayloadDocsLoaderOptions {
   allowEmpty?: boolean
 }
 
-export interface PayloadDoc {
-  id: string
-  slug: string
-  title: string
-  description: string | null
-  markdown: string | null
-  sidebarLabel: string | null
-  updatedAt: string
-}
-
-const DOCS_QUERY = /* GraphQL */ `
-  query DocsByLocale($locale: LocaleInputType!, $limit: Int!) {
-    Docs(locale: $locale, limit: $limit, where: { _status: { equals: published } }) {
-      docs {
-        id
-        slug
-        title
-        description
-        markdown
-        sidebarLabel
-        updatedAt
-      }
-      totalDocs
-    }
-  }
-`
-
 /**
- * Astro calls the loader once per locale and expects entries whose `id` carries
- * the language prefix: Starlight derives its i18n routing from it
- * (`getting-started` for the root locale, `fr/getting-started` otherwise).
+ * Build-time snapshot of the published documentation, one entry per locale and
+ * slug.
+ *
+ * Entry ids carry the locale (`en/introduction`, `fr/introduction`) because the
+ * routes are built by `src/pages/[...path].astro`, which reads the locale back
+ * off the entry — the URL prefix is a routing decision, not a content one.
  */
 export function payloadDocsLoader(options: PayloadDocsLoaderOptions): Loader {
-  const { endpoint, locales, defaultLocale, limit = 500, allowEmpty = false } = options
+  const { endpoint, locales, limit = 500, allowEmpty = false } = options
 
   return {
     name: 'payload-docs',
-    async load({ store, parseData, renderMarkdown, generateDigest, logger }) {
+    async load({ store, parseData, generateDigest, logger }) {
       if (!endpoint) {
         throw new Error('payloadDocsLoader: no endpoint. Set PAYLOAD_GRAPHQL_URL in .env')
       }
@@ -64,13 +38,9 @@ export function payloadDocsLoader(options: PayloadDocsLoaderOptions): Loader {
       let total = 0
 
       for (const locale of locales) {
-        const data = await graphqlRequest<{ Docs: { docs: PayloadDoc[]; totalDocs: number } }>(
-          endpoint,
-          DOCS_QUERY,
-          { locale, limit },
-        )
-
-        const { docs, totalDocs } = data.Docs
+        const result = await graphqlRequest(endpoint, DocsByLocaleDocument, { locale, limit })
+        const docs = result.Docs?.docs ?? []
+        const totalDocs = result.Docs?.totalDocs ?? 0
 
         if (totalDocs > limit) {
           logger.warn(
@@ -79,31 +49,12 @@ export function payloadDocsLoader(options: PayloadDocsLoaderOptions): Loader {
         }
 
         for (const doc of docs) {
-          const id = locale === defaultLocale ? doc.slug : `${locale}/${doc.slug}`
-
-          // Starlight assumes a file-based loader and dereferences
-          // `entry.filePath!`. We supply a consistent synthetic path.
-          const filePath = `src/content/docs/${id}.md`
-
-          // `parseData` applies the collection schema. This is essential:
-          // `docsSchema()` defines `draft: false` as a default, and in production
-          // Starlight discards any entry whose `draft` is not exactly `false`.
-          const parsed = await parseData({
-            id,
-            filePath,
-            data: {
-              title: doc.title,
-              ...(doc.description ? { description: doc.description } : {}),
-              ...(doc.sidebarLabel ? { sidebar: { label: doc.sidebarLabel } } : {}),
-            },
-          })
+          const id = `${locale}/${doc.slug}`
 
           store.set({
             id,
-            data: parsed,
-            filePath,
-            rendered: await renderMarkdown(doc.markdown ?? ''),
-            digest: generateDigest(`${doc.updatedAt}:${doc.markdown ?? ''}`),
+            data: await parseData({ id, data: { ...doc, locale } }),
+            digest: generateDigest(doc),
           })
           total++
         }

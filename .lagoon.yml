@@ -11,16 +11,14 @@ tasks:
   # its internal name.
   post-rollout:
     - run:
-        name: Prepare the database and, in dev, seed demo content
+        name: Seed demo content in development
         service: cms
         shell: bash
         command: |
           set -e
-          # Creates the collections and builds their indexes outside a
-          # transaction: without this the very first write against a fresh
-          # database fails on a lock conflict (see
-          # src/seed/ensureCollections.ts).
-          pnpm --filter cms db:prepare
+          # TODO (deployment): with the Postgres adapter the schema is created
+          # by `push` in development only. A shared environment needs
+          # `payload migrate` here, run before anything writes.
 
           # The seed goes through Payload's local API: it needs the database, not
           # the HTTP server. It is idempotent, and only creates an administrator

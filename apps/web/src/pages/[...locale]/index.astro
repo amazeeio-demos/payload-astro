@@ -1,15 +1,14 @@
 ---
 /**
- * Home page. Starlight only routes the pages coming from the `docs` collection,
- * so `/` and `/fr/` would 404 without this file. A file-based route wins over
- * the one Starlight injects.
+ * Home page, one per locale. It exists before any content does, so its strings
+ * live here rather than in Payload.
  *
  * The rest parameter is empty for the default locale (served at the root) and
  * carries the code for the others.
  */
-import StarlightPage from '@astrojs/starlight/components/StarlightPage.astro'
-
-import { CMS_ADMIN_URL, DEFAULT_LOCALE, DOCS_ENTRY_SLUG, LOCALES } from '../../site'
+import Site from '../../layouts/Site.astro'
+import { docHrefFor } from '../../routes'
+import { CMS_ADMIN_URL, DEFAULT_LOCALE, DOCS_ENTRY_SLUG, LOCALES, type Locale } from '../../site'
 
 interface Strings {
   tagline: string
@@ -17,8 +16,7 @@ interface Strings {
   cms: string
 }
 
-/** Kept here rather than in Payload: this page exists before any content does. */
-const UI: Record<string, Strings> = {
+const UI: Record<Locale, Strings> = {
   en: {
     tagline: 'Content managed in Payload CMS, rendered statically by Astro.',
     docs: 'Read the documentation',
@@ -38,30 +36,15 @@ export function getStaticPaths() {
   }))
 }
 
-const { locale } = Astro.props as { locale: string }
-const strings = UI[locale] ?? UI[DEFAULT_LOCALE]!
-const prefix = locale === DEFAULT_LOCALE ? '' : `/${locale}`
-
-const actions = [
-  { text: strings.docs, link: `${prefix}/${DOCS_ENTRY_SLUG}`, icon: 'open-book' as const },
-  ...(CMS_ADMIN_URL
-    ? [
-        {
-          text: strings.cms,
-          link: CMS_ADMIN_URL,
-          variant: 'secondary' as const,
-          icon: 'link-alt' as const,
-        },
-      ]
-    : []),
-]
+const { locale } = Astro.props as { locale: Locale }
+const strings = UI[locale]
 ---
 
-<StarlightPage
-  frontmatter={{
-    title: 'Docs',
-    description: strings.tagline,
-    template: 'splash',
-    hero: { tagline: strings.tagline, actions },
-  }}
-/>
+<Site locale={locale} title="Docs" description={strings.tagline}>
+  <h1 class="doc-title">Docs</h1>
+  <p class="doc-description">{strings.tagline}</p>
+  <p>
+    <a href={docHrefFor(DOCS_ENTRY_SLUG, locale)}>{strings.docs}</a>
+    {CMS_ADMIN_URL ? <> · <a href={CMS_ADMIN_URL}>{strings.cms}</a></> : null}
+  </p>
+</Site>

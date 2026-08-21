@@ -1,7 +1,7 @@
 // Must stay first: populates process.env before anything else reads it.
 import './lib/env'
 
-import { mongooseAdapter } from '@payloadcms/db-mongodb'
+import { postgresAdapter } from '@payloadcms/db-postgres'
 import { BlocksFeature, CodeBlock, lexicalEditor } from '@payloadcms/richtext-lexical'
 import path from 'path'
 import { buildConfig } from 'payload'
@@ -12,7 +12,7 @@ import { Categories } from './collections/Categories'
 import { Docs } from './collections/Docs'
 import { Media } from './collections/Media'
 import { Users } from './collections/Users'
-import { resolveMongoUri } from './lib/mongoUri'
+import { resolveDatabaseUri } from './lib/databaseUri'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -64,10 +64,22 @@ function resolveServerURL(): string {
 
 const serverURL = resolveServerURL()
 
+/**
+ * Origin of the Astro site serving `/preview/*`. It is the parent of the
+ * postMessage exchange, so it also has to be a CORS and CSRF origin: the
+ * live-preview SDK POSTs the unsaved document back to this API with
+ * `credentials: 'include'`, and a missing entry makes that call fail silently.
+ */
+const previewURL = process.env.PREVIEW_URL ?? 'http://localhost:4321'
+
+/** Shared secret guarding the preview route — see apps/web/src/site.ts. */
+const previewSecret = process.env.PREVIEW_SECRET ?? ''
+
 /** Origins allowed to query the API: the Astro site, in dev and in production. */
 const allowedOrigins = [
   process.env.SITE_URL,
   process.env.LAGOON_ROUTE,
+  previewURL,
   'http://localhost:4321',
 ].filter((origin): origin is string => Boolean(origin))
 
@@ -77,6 +89,24 @@ export default buildConfig({
     user: Users.slug,
     importMap: {
       baseDir: path.resolve(dirname),
+    },
+    // The admin panel embeds the Astro site in an iframe and pushes the unsaved
+    // form state to it over postMessage; `/preview/*` renders it on demand.
+    livePreview: {
+      collections: ['docs'],
+      // Recomputed on every keystroke once autosave is on — keep it cheap and
+      // synchronous.
+      url: ({ data, locale }) => {
+        const slug = typeof data?.slug === 'string' ? data.slug : null
+        // A document that has never been saved has no slug: returning null
+        // leaves the panel empty instead of pointing the iframe at a 404.
+        if (!slug) return null
+        return `${previewURL}/preview/${locale?.code ?? 'en'}/${slug}?secret=${previewSecret}`
+      },
+      breakpoints: [
+        { name: 'mobile', label: 'Mobile', width: 375, height: 667 },
+        { name: 'tablet', label: 'Tablet', width: 768, height: 1024 },
+      ],
     },
   },
   collections: [Docs, Categories, Media, Users],
@@ -107,8 +137,8 @@ export default buildConfig({
   typescript: {
     outputFile: path.resolve(dirname, 'payload-types.ts'),
   },
-  db: mongooseAdapter({
-    url: resolveMongoUri(),
+  db: postgresAdapter({
+    pool: { connectionString: resolveDatabaseUri() },
   }),
   sharp,
   plugins: [],

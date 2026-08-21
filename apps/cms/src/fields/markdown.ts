@@ -6,12 +6,12 @@ import { convertLexicalToMarkdown, editorConfigFactory } from '@payloadcms/richt
 /**
  * Virtual field exposing the Lexical body as Markdown.
  *
- * This is the hinge between Payload and Astro: the frontend never handles
- * Lexical JSON, it receives Markdown that Astro's own pipeline renders — which
- * earns it heading anchors, the Starlight table of contents and Expressive Code
- * syntax highlighting for free.
+ * The frontend no longer uses it — it renders the Lexical JSON itself, see
+ * `packages/ui/src/RichText.tsx`. The field stays because Markdown remains the
+ * cheapest input for anything that is not a browser: search indexing, an export,
+ * a prompt.
  *
- * The field is computed on read and dropped before write: nothing is stored.
+ * It is computed on read and dropped before write: nothing is stored.
  */
 export const markdownField = (richTextFieldName: string): Field => ({
   name: 'markdown',

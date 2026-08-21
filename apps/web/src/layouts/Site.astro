@@ -1,0 +1,253 @@
+---
+/**
+ * Shell of every page: head, navigation, locale switch.
+ *
+ * Written in Astro rather than React on purpose — it renders to HTML and ships
+ * no JavaScript. In the preview route it sits *outside* the island, so it does
+ * not follow the unsaved changes: only the document itself updates live. That
+ * is the intended trade-off, and the reason the preview banner is rendered here.
+ */
+import { buildNavigation } from '../navigation'
+import { docHrefFor, homeHrefFor } from '../routes'
+import { CMS_ADMIN_URL, LOCALES, type Locale } from '../site'
+
+interface Props {
+  locale: Locale
+  title: string
+  description?: string | null
+  /** Slug of the page being shown, so the locale switch can stay on it. */
+  slug?: string
+  /** Renders the draft banner and keeps the page out of search engines. */
+  preview?: boolean
+}
+
+const { locale, title, description, slug, preview = false } = Astro.props
+
+const navigation = await buildNavigation(locale)
+const currentPath = Astro.url.pathname
+
+const UI = {
+  en: { site: 'Docs', nav: 'Documentation', cms: 'Open the CMS', preview: 'Draft preview' },
+  fr: { site: 'Docs', nav: 'Documentation', cms: 'Ouvrir le CMS', preview: 'Aperçu du brouillon' },
+} satisfies Record<Locale, Record<string, string>>
+
+const strings = UI[locale]
+---
+
+<!doctype html>
+<html lang={locale}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    {description ? <meta name="description" content={description} /> : null}
+    {preview ? <meta name="robots" content="noindex, nofollow" /> : null}
+    <style>
+      :root {
+        --ink: #16181d;
+        --muted: #5c6370;
+        --accent: #2f5bea;
+        --line: #e3e6ec;
+        --bg: #ffffff;
+        --code-bg: #f5f6f9;
+        --rt-indent-step: 1.5rem;
+        color-scheme: light dark;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --ink: #e7e9ee;
+          --muted: #9aa2b1;
+          --accent: #8aa5ff;
+          --line: #2a2f3a;
+          --bg: #14161b;
+          --code-bg: #1c2029;
+        }
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font: 16px/1.65 ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+      }
+
+      a {
+        color: var(--accent);
+      }
+
+      .banner {
+        padding: 0.5rem 1.5rem;
+        background: var(--accent);
+        color: #fff;
+        font-size: 0.85rem;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+      }
+
+      .topbar {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 0.9rem 1.5rem;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .topbar strong {
+        font-size: 1.05rem;
+      }
+
+      .topbar nav {
+        margin-left: auto;
+        display: flex;
+        gap: 0.75rem;
+        font-size: 0.9rem;
+      }
+
+      .topbar nav a[aria-current='true'] {
+        font-weight: 700;
+      }
+
+      .shell {
+        display: grid;
+        grid-template-columns: minmax(0, 15rem) minmax(0, 1fr);
+        gap: 2.5rem;
+        max-width: 68rem;
+        margin: 0 auto;
+        padding: 2rem 1.5rem 4rem;
+      }
+
+      @media (max-width: 46rem) {
+        .shell {
+          grid-template-columns: minmax(0, 1fr);
+          gap: 1.5rem;
+        }
+      }
+
+      .sidebar h2 {
+        margin: 1.5rem 0 0.4rem;
+        font-size: 0.72rem;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--muted);
+      }
+
+      .sidebar ul {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+
+      .sidebar li a {
+        display: block;
+        padding: 0.2rem 0;
+        color: inherit;
+        text-decoration: none;
+      }
+
+      .sidebar li a:hover,
+      .sidebar li a[aria-current='page'] {
+        color: var(--accent);
+      }
+
+      .doc-title {
+        margin: 0 0 0.35rem;
+        font-size: 2.1rem;
+        line-height: 1.2;
+      }
+
+      .doc-description {
+        margin: 0 0 2rem;
+        color: var(--muted);
+        font-size: 1.05rem;
+      }
+
+      .doc-body h2 {
+        margin-top: 2.4rem;
+        border-bottom: 1px solid var(--line);
+        padding-bottom: 0.3rem;
+      }
+
+      .doc-body :not(pre) > code {
+        padding: 0.12em 0.35em;
+        border-radius: 4px;
+        background: var(--code-bg);
+        font-size: 0.9em;
+      }
+
+      .doc-body pre {
+        overflow-x: auto;
+        padding: 1rem;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--code-bg);
+        font-size: 0.88rem;
+      }
+
+      .doc-body blockquote {
+        margin: 1.5rem 0;
+        padding-left: 1rem;
+        border-left: 3px solid var(--line);
+        color: var(--muted);
+      }
+
+      .doc-body .rt-list-check {
+        list-style: none;
+        padding-left: 0;
+      }
+    </style>
+  </head>
+  <body>
+    {preview ? <div class="banner">{strings.preview}</div> : null}
+
+    <header class="topbar">
+      <strong><a href={homeHrefFor(locale)} style="color:inherit;text-decoration:none">{strings.site}</a></strong>
+      <nav aria-label="Language">
+        {
+          LOCALES.map((code) => (
+            <a
+              href={slug ? docHrefFor(slug, code) : homeHrefFor(code)}
+              hreflang={code}
+              aria-current={code === locale ? 'true' : undefined}
+            >
+              {code.toUpperCase()}
+            </a>
+          ))
+        }
+        {CMS_ADMIN_URL ? <a href={CMS_ADMIN_URL}>{strings.cms}</a> : null}
+      </nav>
+    </header>
+
+    <div class="shell">
+      <aside class="sidebar" aria-label={strings.nav}>
+        {
+          navigation.map((group) => (
+            <>
+              <h2>{group.label}</h2>
+              <ul>
+                {group.items.map((item) => (
+                  <li>
+                    <a
+                      href={item.href}
+                      aria-current={item.href === currentPath ? 'page' : undefined}
+                    >
+                      {item.label}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </>
+          ))
+        }
+      </aside>
+
+      <main>
+        <slot />
+      </main>
+    </div>
+  </body>
+</html>

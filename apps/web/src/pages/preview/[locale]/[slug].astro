@@ -1,0 +1,63 @@
+---
+/**
+ * Live preview of a single document, rendered on demand.
+ *
+ * It lives under its own `/preview` namespace rather than reusing the public URL
+ * with a query flag: `export const prerender` only takes a literal, and a
+ * prerendered route cannot become dynamic per request. The namespace also keeps
+ * `getStaticPaths()` in `[...path].astro` from ever colliding with it.
+ */
+export const prerender = false
+
+import { DocDraftDocument, graphqlRequest } from '@repo/graphql'
+
+import PreviewIsland from '../../../components/PreviewIsland'
+import Site from '../../../layouts/Site.astro'
+import {
+  CMS_URL,
+  DEFAULT_LOCALE,
+  isLocale,
+  PAYLOAD_GRAPHQL_URL,
+  PREVIEW_API_KEY,
+  PREVIEW_SECRET,
+} from '../../../site'
+
+const { locale, slug } = Astro.params
+
+// One shared secret, compared server-side. A wrong secret and an unknown locale
+// give the same bare 404: neither tells a crawler that the route exists.
+if (
+  !PREVIEW_SECRET ||
+  Astro.url.searchParams.get('secret') !== PREVIEW_SECRET ||
+  !isLocale(locale) ||
+  !slug
+) {
+  return new Response('Not found', { status: 404 })
+}
+
+// The API key of the `preview@example.com` user. Without it Payload applies
+// `authenticatedOrPublished` and `draft: true` returns nothing.
+const result = await graphqlRequest(
+  PAYLOAD_GRAPHQL_URL,
+  DocDraftDocument,
+  { slug, locale },
+  { headers: { Authorization: `users API-Key ${PREVIEW_API_KEY}` } },
+)
+
+const doc = result.Docs?.docs[0]
+if (!doc) return new Response('Not found', { status: 404 })
+
+// A preview is never cacheable and never indexable.
+Astro.response.headers.set('Cache-Control', 'no-store')
+Astro.response.headers.set('X-Robots-Tag', 'noindex, nofollow')
+---
+
+<Site locale={locale} title={doc.title ?? slug} slug={slug} preview>
+  <PreviewIsland
+    client:only="react"
+    initialData={doc}
+    locale={locale}
+    defaultLocale={DEFAULT_LOCALE}
+    serverURL={CMS_URL}
+  />
+</Site>

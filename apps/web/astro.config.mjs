@@ -12,36 +12,30 @@ try {
   // No .env: the variables come from the environment.
 }
 
+import node from '@astrojs/node'
+import react from '@astrojs/react'
 import { defineConfig } from 'astro/config'
-import starlight from '@astrojs/starlight'
-import { fetchStarlightSidebar } from '@repo/payload-loader'
 
-import { DEFAULT_LOCALE, LOCALES, PAYLOAD_GRAPHQL_URL, SITE_URL } from './src/site'
+import { SITE_URL } from './src/site'
 
-// The sidebar belongs to the integration's configuration, not to the content, so
-// it has to be known before the loader runs — hence this call here.
-const sidebar = await fetchStarlightSidebar({
-  endpoint: PAYLOAD_GRAPHQL_URL,
-  locales: LOCALES,
-  defaultLocale: DEFAULT_LOCALE,
-})
-
+/**
+ * Hybrid site: every route is prerendered by default, and the handful that opt
+ * out with `export const prerender = false` — only `/preview/*` — are rendered
+ * on demand by the node adapter. The public pages therefore stay a pile of
+ * static files, while the preview can read drafts per request.
+ */
 export default defineConfig({
   site: SITE_URL,
   output: 'static',
-  integrations: [
-    starlight({
-      title: 'Docs',
-      // `root` = default locale, served without a URL prefix.
-      defaultLocale: 'root',
-      locales: {
-        root: { label: 'English', lang: 'en' },
-        fr: { label: 'Français', lang: 'fr' },
-      },
-      sidebar,
-      social: [
-        { icon: 'github', label: 'GitHub', href: 'https://github.com/uselagoon/lagoon' },
-      ],
-    }),
-  ],
+  adapter: node({ mode: 'standalone' }),
+  integrations: [react()],
+  vite: {
+    ssr: {
+      // The workspace packages ship TypeScript sources, not a build. Vite
+      // externalises anything resolved through node_modules by default, which
+      // hands those .ts files straight to Node's ESM loader — and it cannot read
+      // them. Listing them here keeps them inside the transform pipeline.
+      noExternal: ['@repo/graphql', '@repo/payload-loader', '@repo/ui'],
+    },
+  },
 })
