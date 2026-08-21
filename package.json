@@ -15,6 +15,7 @@
     "build": "pnpm --filter cms build && pnpm --filter web build",
     "build:web": "pnpm --filter web build",
     "generate:types": "pnpm --filter cms generate:types",
+    "generate:graphql": "pnpm --filter @repo/graphql generate",
     "typecheck": "pnpm -r typecheck"
   },
   "devDependencies": {

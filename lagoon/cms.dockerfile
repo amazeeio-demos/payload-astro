@@ -12,7 +12,9 @@ RUN corepack enable
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/cms/package.json apps/cms/
 COPY apps/web/package.json apps/web/
+COPY packages/graphql/package.json packages/graphql/
 COPY packages/payload-loader/package.json packages/payload-loader/
+COPY packages/ui/package.json packages/ui/
 
 RUN pnpm install --frozen-lockfile --filter cms...
 
