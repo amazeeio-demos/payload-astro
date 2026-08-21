@@ -8,7 +8,7 @@
   },
   "scripts": {
     "dev": "concurrently -n db,cms,web -c blue,magenta,green \"pnpm dev:db\" \"pnpm dev:cms\" \"pnpm dev:web\"",
-    "dev:db": "pnpm --filter @repo/mongo-dev start",
+    "dev:db": "docker compose -f docker-compose.dev.yml up",
     "dev:cms": "pnpm --filter cms dev",
     "dev:web": "pnpm --filter web dev",
     "seed": "pnpm --filter cms seed",

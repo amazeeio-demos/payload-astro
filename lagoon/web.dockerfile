@@ -15,7 +15,6 @@ RUN corepack enable
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/cms/package.json apps/cms/
 COPY apps/web/package.json apps/web/
-COPY packages/mongo-dev/package.json packages/mongo-dev/
 COPY packages/payload-loader/package.json packages/payload-loader/
 
 RUN pnpm install --frozen-lockfile --filter web...

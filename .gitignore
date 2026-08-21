@@ -1,7 +1,7 @@
 node_modules/
 .pnpm-store/
 
-# Local MongoDB data (mongodb-memory-server) and downloaded mongod binaries
+# Local database data and downloaded binaries
 .data/
 
 # Builds

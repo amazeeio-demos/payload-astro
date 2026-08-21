@@ -8,10 +8,8 @@ import { getPayload, type RichTextField } from 'payload'
 
 import config from '../payload.config'
 import { CATEGORIES, DOCS } from './content'
-import { ensureCollections } from './ensureCollections'
 
 const payload = await getPayload({ config })
-await ensureCollections(payload)
 
 // The `body` field's editor, not the default Lexical one: it is the one carrying
 // `CodeBlock`, hence the converter that knows how to read ``` fences.
@@ -42,7 +40,9 @@ if (existingUsers.totalDocs === 0) {
 
 // --- Categories -------------------------------------------------------------
 
-const categoryIds = new Map<string, string>()
+// Postgres ids are integers, not strings: a relationship field rejects an id
+// whose type does not match the one its collection uses.
+const categoryIds = new Map<string, number>()
 
 for (const category of CATEGORIES) {
   const found = await payload.find({
@@ -53,7 +53,7 @@ for (const category of CATEGORIES) {
 
   const existing = found.docs[0]
   if (existing) {
-    categoryIds.set(category.slug, String(existing.id))
+    categoryIds.set(category.slug, existing.id)
     continue
   }
 
@@ -68,7 +68,7 @@ for (const category of CATEGORIES) {
     locale: 'fr',
     data: { name: category.name.fr },
   })
-  categoryIds.set(category.slug, String(created.id))
+  categoryIds.set(category.slug, created.id)
   console.log(`[seed] category "${category.slug}"`)
 }
 

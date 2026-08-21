@@ -1,0 +1,32 @@
+# Local development database.
+#
+# Separate from `docker-compose.yml`, which is Lagoon's service manifest and is
+# never run locally. Started by `pnpm dev:db` (`docker compose -f
+# docker-compose.dev.yml up`); the data lives in a named volume, so it survives
+# `docker compose down`.
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    # If a system-wide Postgres (Homebrew, Postgres.app) already holds 5432 it
+    # wins over this binding for connections to 127.0.0.1, and the only symptom
+    # is a confusing `role "payload" does not exist`. Stop it, or move this
+    # mapping to 5433 and follow through in DATABASE_URI.
+    ports:
+      - '5432:5432'
+    environment:
+      POSTGRES_USER: payload
+      POSTGRES_PASSWORD: payload
+      POSTGRES_DB: payload
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    # Payload's first connection happens as soon as the CMS boots, which under
+    # `pnpm dev` is a couple of seconds after this container starts.
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U payload -d payload']
+      interval: 2s
+      timeout: 3s
+      retries: 15
+
+volumes:
+  postgres-data:

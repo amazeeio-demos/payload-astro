@@ -6,4 +6,3 @@ onlyBuiltDependencies:
   - sharp
   - esbuild
   - unrs-resolver
-  - mongodb-memory-server

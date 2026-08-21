@@ -1,7 +1,7 @@
 // Must stay first: populates process.env before anything else reads it.
 import './lib/env'
 
-import { mongooseAdapter } from '@payloadcms/db-mongodb'
+import { postgresAdapter } from '@payloadcms/db-postgres'
 import { BlocksFeature, CodeBlock, lexicalEditor } from '@payloadcms/richtext-lexical'
 import path from 'path'
 import { buildConfig } from 'payload'
@@ -12,7 +12,7 @@ import { Categories } from './collections/Categories'
 import { Docs } from './collections/Docs'
 import { Media } from './collections/Media'
 import { Users } from './collections/Users'
-import { resolveMongoUri } from './lib/mongoUri'
+import { resolveDatabaseUri } from './lib/databaseUri'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -107,8 +107,8 @@ export default buildConfig({
   typescript: {
     outputFile: path.resolve(dirname, 'payload-types.ts'),
   },
-  db: mongooseAdapter({
-    url: resolveMongoUri(),
+  db: postgresAdapter({
+    pool: { connectionString: resolveDatabaseUri() },
   }),
   sharp,
   plugins: [],

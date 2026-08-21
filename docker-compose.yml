@@ -13,7 +13,7 @@ services:
     labels:
       lagoon.type: node
     depends_on:
-      - mongodb
+      - postgres
 
   # Static Astro site. `node-persistent` because the contents of /app/dist are
   # produced after deployment, by the post-rollout task: they have to survive pod
@@ -27,9 +27,14 @@ services:
       lagoon.persistent: /app/dist
       lagoon.persistent.size: 1Gi
 
-  # Meta type: Lagoon picks `mongodb-single` in development and `mongodb-dbaas`
+  # Meta type: Lagoon picks `postgres-single` in development and `postgres-dbaas`
   # in production when the cluster exposes a DBaaS operator.
-  mongodb:
-    image: uselagoon/mongo:latest
+  #
+  # TODO (deployment): untested — this pass only covers local development. The
+  # variables Lagoon injects still have to be mapped in
+  # apps/cms/src/lib/databaseUri.ts, and Payload needs real migrations rather
+  # than the dev adapter's `push`.
+  postgres:
+    image: uselagoon/postgres-17:latest
     labels:
-      lagoon.type: mongodb
+      lagoon.type: postgres

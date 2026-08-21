@@ -12,16 +12,16 @@ RUN corepack enable
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/cms/package.json apps/cms/
 COPY apps/web/package.json apps/web/
-COPY packages/mongo-dev/package.json packages/mongo-dev/
 COPY packages/payload-loader/package.json packages/payload-loader/
 
 RUN pnpm install --frozen-lockfile --filter cms...
 
 COPY . .
 
-# `next build` needs a syntactically valid Mongo URI to load the Payload config,
-# but never connects: the real URI comes from Lagoon when the container starts.
-ENV DATABASE_URI=mongodb://127.0.0.1:27017/build
+# `next build` needs a syntactically valid Postgres URI to load the Payload
+# config, but never connects: the real URI comes from Lagoon when the container
+# starts.
+ENV DATABASE_URI=postgres://payload:payload@127.0.0.1:5432/build
 ENV PAYLOAD_SECRET=build-time-placeholder
 RUN pnpm --filter cms build
 
