@@ -113,8 +113,11 @@ Before the first deployment:
    ```bash
    lagoon add variable -p <project> -e main -N PAYLOAD_SECRET   -V "<secret>" -S runtime
    lagoon add variable -p <project> -e main -N SEED_ADMIN_EMAIL -V "..."      -S runtime
-   # Linked from the home page; the link is omitted when unset.
-   lagoon add variable -p <project> -e main -N CMS_URL          -V "https://admin.docs.example.com" -S runtime
+   # Public URL of the CMS. Read by both apps: Payload puts it in its CSRF
+   # allowlist (without it the admin panel refuses its own writes, and the boot
+   # fails outright), and the Astro home page links to it.
+   lagoon add variable -p <project> -e main -N NEXT_PUBLIC_SERVER_URL \
+     -V "https://admin.docs.example.com" -S runtime
    ```
 
 3. Check the variables injected by the MongoDB service:

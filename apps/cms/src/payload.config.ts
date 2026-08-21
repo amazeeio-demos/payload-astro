@@ -36,6 +36,34 @@ const CODE_LANGUAGES = {
   plaintext: 'Plain text',
 }
 
+/**
+ * Public URL of this CMS. Payload appends it to the CSRF allowlist on its own
+ * (`sanitizeConfig`), and without it the admin panel cannot write: browsers send
+ * an `Origin` header on same-origin POSTs, `extractJWT` finds it missing from a
+ * non-empty `csrf` list and drops the session cookie, so every save comes back
+ * as "You are not allowed to perform this action."
+ *
+ * The localhost fallback only holds in development. In production a wrong value
+ * reproduces that exact bug against the real domain, so an unset variable stops
+ * the boot instead of shipping an admin panel that cannot save.
+ */
+function resolveServerURL(): string {
+  const configured = process.env.NEXT_PUBLIC_SERVER_URL
+
+  if (configured) return configured
+
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error(
+      'NEXT_PUBLIC_SERVER_URL is not set. Point it at the public URL of this CMS, ' +
+        'otherwise the admin panel rejects its own writes on CSRF grounds.',
+    )
+  }
+
+  return 'http://localhost:3000'
+}
+
+const serverURL = resolveServerURL()
+
 /** Origins allowed to query the API: the Astro site, in dev and in production. */
 const allowedOrigins = [
   process.env.SITE_URL,
@@ -44,6 +72,7 @@ const allowedOrigins = [
 ].filter((origin): origin is string => Boolean(origin))
 
 export default buildConfig({
+  serverURL,
   admin: {
     user: Users.slug,
     importMap: {

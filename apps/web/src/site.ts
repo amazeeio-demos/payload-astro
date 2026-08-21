@@ -34,9 +34,9 @@ export const DOCS_ENTRY_SLUG = process.env.DOCS_ENTRY_SLUG ?? 'introduction'
  * Public URL of the Payload admin panel, linked from the home page.
  *
  * `CMS_URL` first, then `NEXT_PUBLIC_SERVER_URL` — the same value under the name
- * the CMS already uses. When neither is set the home page drops the link rather
- * than pointing production at `localhost`, so on Lagoon set `CMS_URL` to the
- * `cms` route (see .lagoon.yml).
+ * the CMS already uses, which is the one to set on Lagoon since Payload needs it
+ * too. When neither is set the home page drops the link rather than pointing
+ * production at `localhost` (see .lagoon.yml).
  */
 const CMS_BASE_URL = process.env.CMS_URL ?? process.env.NEXT_PUBLIC_SERVER_URL ?? ''
 
