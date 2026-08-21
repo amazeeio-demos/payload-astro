@@ -301,4 +301,25 @@ check that `dist/client/introduction/index.html` exists (static) and that
 Lagoon deployment (needs a node service for the preview route or a static +
 node split), media storage in production, Shiki/Expressive-Code-grade code
 highlighting, search, SEO plugin, AI features (see
-`docs/feasibility-preview-ai.md` § 2), translating the two French docs in `docs/`.
+`docs/feasibility-preview-ai.md` § 2), translating the French docs in `docs/`.
+
+**Roles and access control** are also out of scope for this pass, but they are
+needed before any shared environment. Verified state today: `Docs` and
+`Categories` gate writes behind `authenticated`, while `Media` and `Users`
+declare no access rules at all — so any signed-in account can edit or delete any
+document *and* manage user accounts. That also means the `preview@` service user
+from Step 1, whose API key only needs to read drafts, currently has full write
+access to the CMS. `docs/roles-and-access-control.md`
+proposes an admin/editor/viewer scheme (a `roles` field on the auth collection
+plus access functions, ~100 lines) and lists the four decisions to take first —
+including which role the preview service user should get (§ 2 above gives it an
+API key, not a role). Read it before Step 1 if the POC is ever exposed beyond
+localhost.
+
+For context on how Payload maps onto Drupal habits — what transposes, what has
+no equivalent, and the pitfalls found while stress-testing a Payload starter on
+Vercel — see `docs/drupal-payload-comparison.md`. Its § 4 lists verified traps
+that bear directly on this plan, notably: a Lexical node type that is not
+enabled in the editor config breaks the admin panel while the frontend still
+renders it (relevant to the hand-written serializer in `packages/ui`), and
+adding any Lexical feature also requires `generate:importmap`.
