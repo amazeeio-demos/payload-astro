@@ -3,6 +3,8 @@
  *
  * Goes through Payload's local API — no HTTP, no server to start.
  */
+import { randomUUID } from 'node:crypto'
+
 import { convertMarkdownToLexical, editorConfigFactory } from '@payloadcms/richtext-lexical'
 import { getPayload, type RichTextField } from 'payload'
 
@@ -30,12 +32,46 @@ if (!email || !password) {
   throw new Error('SEED_ADMIN_EMAIL and SEED_ADMIN_PASSWORD must be set in .env')
 }
 
-const existingUsers = await payload.count({ collection: 'users' })
-if (existingUsers.totalDocs === 0) {
+/** Looks a user up by address — the seed creates two, so a count would not do. */
+const userExists = async (address: string) =>
+  (await payload.find({ collection: 'users', where: { email: { equals: address } }, limit: 1 }))
+    .docs.length > 0
+
+if (await userExists(email)) {
+  console.log(`[seed] administrator ${email} already exists, skipping creation`)
+} else {
   await payload.create({ collection: 'users', data: { email, password } })
   console.log(`[seed] administrator created: ${email}`)
+}
+
+// --- Preview service user ---------------------------------------------------
+
+// The Astro preview route reads drafts with this API key rather than a session:
+// `authenticatedOrPublished` grants drafts to any authenticated user, and a
+// request carrying a valid key counts as one.
+const previewApiKey = process.env.PREVIEW_API_KEY
+
+if (!previewApiKey) {
+  throw new Error('PREVIEW_API_KEY must be set in .env')
+}
+
+const PREVIEW_EMAIL = 'preview@example.com'
+
+if (await userExists(PREVIEW_EMAIL)) {
+  console.log(`[seed] preview user ${PREVIEW_EMAIL} already exists, skipping creation`)
 } else {
-  console.log('[seed] a user already exists, skipping creation')
+  await payload.create({
+    collection: 'users',
+    data: {
+      email: PREVIEW_EMAIL,
+      // Never used to log in: the API key is the only credential. Payload still
+      // requires a password, so it gets one nobody knows.
+      password: randomUUID(),
+      enableAPIKey: true,
+      apiKey: previewApiKey,
+    },
+  })
+  console.log(`[seed] preview user created: ${PREVIEW_EMAIL}`)
 }
 
 // --- Categories -------------------------------------------------------------

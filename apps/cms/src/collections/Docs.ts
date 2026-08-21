@@ -22,7 +22,10 @@ export const Docs: CollectionConfig = {
     delete: authenticated,
   },
   versions: {
-    drafts: true,
+    // Autosave is what makes the live preview feel instant: the admin pushes the
+    // unsaved form state to the iframe on every change, and persists a draft
+    // version in the background at this interval.
+    drafts: { autosave: { interval: 375 } },
   },
   defaultSort: 'sidebarOrder',
   fields: [
