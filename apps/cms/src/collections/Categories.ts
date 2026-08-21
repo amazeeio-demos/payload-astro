@@ -2,7 +2,7 @@ import type { CollectionConfig } from 'payload'
 
 import { anyone, authenticated } from '../access'
 
-/** Starlight sidebar groups. */
+/** Sidebar groups of the documentation site. */
 export const Categories: CollectionConfig = {
   slug: 'categories',
   admin: {

@@ -1,0 +1,35 @@
+---
+/**
+ * Every published documentation page, prerendered.
+ *
+ * The paths come from the build-time snapshot, so this file never talks to the
+ * CMS. `DocPage` is rendered without a client directive: React runs here only,
+ * and the page ships no JavaScript.
+ */
+import { getCollection } from 'astro:content'
+import { DocPage } from '@repo/ui'
+
+import Site from '../layouts/Site.astro'
+import { docPathFor } from '../routes'
+import { DEFAULT_LOCALE } from '../site'
+
+export async function getStaticPaths() {
+  const docs = await getCollection('docs')
+
+  return docs.map((entry) => ({
+    // `preview` is served on demand by src/pages/preview/: a document with that
+    // slug would shadow it, so it never gets a static path.
+    params: { path: docPathFor(entry.data.slug, entry.data.locale) },
+    props: { entry },
+  }))
+}
+
+type Props = { entry: Awaited<ReturnType<typeof getCollection<'docs'>>>[number] }
+
+const { entry } = Astro.props
+const { locale, slug, title, description } = entry.data
+---
+
+<Site locale={locale} title={title} description={description} slug={slug}>
+  <DocPage doc={entry.data} locale={locale} defaultLocale={DEFAULT_LOCALE} />
+</Site>
