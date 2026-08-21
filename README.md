@@ -80,6 +80,20 @@ Locales are declared twice and must stay in sync: `localization` in
 English is served at the root, French under `/fr/`. An untranslated page falls
 back to English instead of disappearing — Starlight's native behaviour.
 
+## Home page
+
+Starlight only routes the pages that come from the `docs` collection, so `/` and
+`/fr/` would 404. `apps/web/src/pages/[...locale]/index.astro` fills the gap: a
+splash page, one per locale, linking to the first documentation page and to the
+Payload admin panel.
+
+Its two knobs live in `apps/web/src/site.ts`:
+
+- `DOCS_ENTRY_SLUG` (default `introduction`) — the page the first button opens;
+- `CMS_URL`, falling back to `NEXT_PUBLIC_SERVER_URL` — the admin panel. When
+  neither is set the button disappears rather than pointing production at
+  `localhost`.
+
 ## Deploying to Lagoon
 
 Three services: `cms` (`node`), `web` (`node-persistent`) and `mongodb`.
@@ -99,6 +113,8 @@ Before the first deployment:
    ```bash
    lagoon add variable -p <project> -e main -N PAYLOAD_SECRET   -V "<secret>" -S runtime
    lagoon add variable -p <project> -e main -N SEED_ADMIN_EMAIL -V "..."      -S runtime
+   # Linked from the home page; the link is omitted when unset.
+   lagoon add variable -p <project> -e main -N CMS_URL          -V "https://admin.docs.example.com" -S runtime
    ```
 
 3. Check the variables injected by the MongoDB service:

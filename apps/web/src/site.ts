@@ -23,3 +23,23 @@ export const SITE_URL = process.env.SITE_URL ?? 'http://localhost:4321'
  * first deployment of a blank environment — see the README.
  */
 export const ALLOW_EMPTY = process.env.PAYLOAD_ALLOW_EMPTY === 'true'
+
+/**
+ * First page of the documentation, linked from the home page. Starlight prefixes
+ * it per locale on its own (`/introduction`, `/fr/introduction`).
+ */
+export const DOCS_ENTRY_SLUG = process.env.DOCS_ENTRY_SLUG ?? 'introduction'
+
+/**
+ * Public URL of the Payload admin panel, linked from the home page.
+ *
+ * `CMS_URL` first, then `NEXT_PUBLIC_SERVER_URL` — the same value under the name
+ * the CMS already uses. When neither is set the home page drops the link rather
+ * than pointing production at `localhost`, so on Lagoon set `CMS_URL` to the
+ * `cms` route (see .lagoon.yml).
+ */
+const CMS_BASE_URL = process.env.CMS_URL ?? process.env.NEXT_PUBLIC_SERVER_URL ?? ''
+
+export const CMS_ADMIN_URL = CMS_BASE_URL
+  ? `${CMS_BASE_URL.replace(/\/+$/, '')}/admin`
+  : null

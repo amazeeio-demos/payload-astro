@@ -57,6 +57,9 @@ tasks:
           set -e
           export PAYLOAD_GRAPHQL_URL="http://cms:3000/api/graphql"
           export SITE_URL="${LAGOON_ROUTE}"
+          # The home page links to the admin panel. Lagoon does not hand the
+          # `cms` route to the `web` service, so CMS_URL has to be set as a
+          # project variable; without it the link is simply omitted.
           pnpm --filter web build
 
           # Publish in two steps rather than `rm -rf` on the served volume: a
