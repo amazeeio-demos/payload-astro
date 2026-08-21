@@ -11,13 +11,13 @@
     "typecheck": "astro check"
   },
   "dependencies": {
-    "@astrojs/starlight": "0.41.5",
+    "@astrojs/starlight": "0.41.7",
     "@repo/payload-loader": "workspace:*",
-    "astro": "7.1.5",
+    "astro": "7.2.4",
     "sirv-cli": "^3.0.1"
   },
   "devDependencies": {
-    "@astrojs/check": "^0.9.4",
+    "@astrojs/check": "^0.9.10",
     "typescript": "5.7.3"
   }
 }
