@@ -6,7 +6,9 @@ FROM uselagoon/node-24-builder:${LAGOON_VERSION} AS builder
 WORKDIR /app
 
 # pnpm is not in the Lagoon images: corepack installs the version pinned by the
-# root package.json `packageManager` field.
+# root package.json `packageManager` field. Its cache is kept under /app so the
+# runtime stage inherits it and never downloads at container start.
+ENV COREPACK_HOME=/app/.corepack
 RUN corepack enable
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
@@ -27,11 +29,17 @@ ENV DATABASE_URI=postgres://payload:payload@127.0.0.1:5432/build
 ENV PAYLOAD_SECRET=build-time-placeholder
 RUN pnpm --filter cms build
 
+# Lagoon runs the container as an arbitrary uid in group 0: without this the
+# tree is root-only and anything writing next to the code (Next's cache, the
+# seed) fails with EACCES.
+RUN fix-permissions /app
+
 
 FROM uselagoon/node-24:${LAGOON_VERSION}
 
 WORKDIR /app
 
+ENV COREPACK_HOME=/app/.corepack
 RUN corepack enable
 
 COPY --from=builder /app /app
