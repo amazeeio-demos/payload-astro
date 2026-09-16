@@ -3,6 +3,8 @@ import type { Plugin } from 'payload'
 
 import { payloadAiPlugin } from '@ai-stack/payloadcms'
 
+import { fallbackModels, gatewayBaseURL, modelsEndpoint } from './models'
+
 /**
  * amazee.ai private gateway behind the Payload AI plugin.
  *
@@ -16,35 +18,16 @@ import { payloadAiPlugin } from '@ai-stack/payloadcms'
  * registered and the editor gets no AI menu, so the CMS runs unchanged.
  */
 
-/** Region-bound endpoint. The token only works against the region it was created in. */
-const DEFAULT_BASE_URL = 'https://llm.de-eu101.amazee.ai/v1'
-
-/**
- * Generic aliases every amazee.ai region resolves to a concrete model, so the
- * default configuration works whatever the region. Explicit ids
- * (`claude-5-sonnet`, `gpt-4.1`, `mistral-large-latest`, …) can be listed in
- * `AMAZEE_AI_MODELS`; `GET /v1/models` on the gateway returns what a token may use.
- */
-const DEFAULT_MODELS = ['chat', 'chat_with_complex_json']
-
 export const amazeeAiEnabled = Boolean(process.env.AMAZEE_AI_API_TOKEN)
 
-function resolveModels(): string[] {
-  const configured = (process.env.AMAZEE_AI_MODELS ?? '')
-    .split(',')
-    .map((id) => id.trim())
-    .filter(Boolean)
-
-  return configured.length > 0 ? configured : DEFAULT_MODELS
-}
-
 /**
- * The plugin ships its OpenAI text models with a hard-coded list of GPT ids.
- * The handler itself is generic — it sends whatever the "Model" select holds —
- * so swapping the options of that select is enough to drive the gateway's own
- * model names through the plugin's unmodified generation path.
+ * The plugin ships its OpenAI text models with a hard-coded select of GPT ids.
+ * The handler itself is generic — it sends whatever the "Model" field holds —
+ * so that field is the only thing to replace: a text field rendered by
+ * `ModelSelect`, which asks the gateway for its models (see ./models.ts). The
+ * generation path stays the plugin's own.
  */
-function withGatewayModels(model: GenerationModel, models: string[]): GenerationModel {
+function withGatewayModels(model: GenerationModel, defaultModel: string): GenerationModel {
   if (!model.settings) return model
 
   return {
@@ -55,7 +38,13 @@ function withGatewayModels(model: GenerationModel, models: string[]): Generation
       label: 'amazee.ai settings',
       fields: model.settings.fields.map((field) =>
         field.type === 'select' && field.name === 'model'
-          ? { ...field, defaultValue: models[0], options: models }
+          ? {
+              name: 'model',
+              type: 'text' as const,
+              label: 'Model',
+              defaultValue: defaultModel,
+              admin: { components: { Field: '/ai/ModelSelect#ModelSelect' } },
+            }
           : field,
       ),
     },
@@ -110,15 +99,22 @@ const seedPrompts: SeedPromptFunction = ({ path }) => {
   }
 }
 
-export const amazeeAiPlugin = (): Plugin => {
-  const models = resolveModels()
+export const amazeeAiPlugin = (): Plugin => async (config) => {
+  const [defaultModel] = fallbackModels()
 
-  return payloadAiPlugin({
+  // The Translate menu lists every locale tag by default; the site only has
+  // the ones declared in `localization`.
+  const locales = config.localization
+    ? config.localization.locales.map((locale) => (typeof locale === 'string' ? locale : locale.code))
+    : []
+
+  const plugin = payloadAiPlugin({
     collections: { docs: true },
+    options: { enabledLanguages: locales },
     providers: {
       openai: {
         apiKey: process.env.AMAZEE_AI_API_TOKEN,
-        baseURL: process.env.AMAZEE_AI_BASE_URL ?? DEFAULT_BASE_URL,
+        baseURL: gatewayBaseURL(),
       },
     },
     // Text only: the gateway serves no DALL-E or TTS, and the plugin would
@@ -126,7 +122,7 @@ export const amazeeAiPlugin = (): Plugin => {
     generationModels: (defaults) =>
       defaults
         .filter((model) => model.output === 'text' && model.id.startsWith('Oai-'))
-        .map((model) => withGatewayModels(model, models)),
+        .map((model) => withGatewayModels(model, defaultModel)),
     seedPrompts,
     // Anyone logged into the admin may generate; tighten with a role check when
     // roles exist (see docs/roles-and-access-control.md).
@@ -135,4 +131,7 @@ export const amazeeAiPlugin = (): Plugin => {
       settings: ({ req }) => Boolean(req.user),
     },
   })
+
+  const withAi = await plugin(config)
+  return { ...withAi, endpoints: [...(withAi.endpoints ?? []), modelsEndpoint] }
 }

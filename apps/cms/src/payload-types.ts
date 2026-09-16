@@ -268,13 +268,13 @@ export interface PluginAiInstruction {
   system?: string | null;
   layout?: string | null;
   'Oai-text-settings'?: {
-    model?: ('chat' | 'chat_with_complex_json') | null;
+    model?: string | null;
     maxTokens?: number | null;
     temperature?: number | null;
     extractAttachments?: boolean | null;
   };
   'Oai-object-settings'?: {
-    model?: ('chat' | 'chat_with_complex_json') | null;
+    model?: string | null;
     maxTokens?: number | null;
     temperature?: number | null;
     extractAttachments?: boolean | null;

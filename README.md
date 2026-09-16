@@ -163,7 +163,10 @@ the plugin nor the editor menu is registered.
    and *Translate* once it has content. In `body` the same actions work on the
    current selection.
 5. The *Settings* entry of that bar opens the field's Compose Setting: prompt,
-   model, temperature, max tokens. Prompts are Handlebars templates over the
+   model, temperature, max tokens. The model list is the gateway's own: the
+   picker asks `/api/amazee-ai/models`, which proxies LiteLLM's `/model/info`
+   with the token and keeps the `chat` models, cached for ten minutes. When the
+   gateway cannot be reached the picker falls back to `AMAZEE_AI_MODELS`. Prompts are Handlebars templates over the
    document being edited: `{{ title }}`, `{{ description }}`,
    `{{ toHTML body }}` (HTML of the rich text field; the plugin has no working plain-text helper). Edits persist in the
    database, not in code.
@@ -179,23 +182,25 @@ is a LiteLLM proxy, so the OpenAI protocol is all it needs.
 - Reads `AMAZEE_AI_API_TOKEN` and `AMAZEE_AI_BASE_URL` into the plugin's `openai`
   provider — deliberately not the `OPENAI_*` names the plugin reads by default,
   so the private token can never reach api.openai.com.
-- Replaces the plugin's hard-coded GPT model list with `AMAZEE_AI_MODELS`, and
+- Replaces the plugin's hard-coded GPT model select with `ModelSelect`, a text
+  field whose options come from the gateway (`apps/cms/src/ai/models.ts`), and
   keeps only text models: the gateway serves no image or speech endpoints.
 - Seeds static prompts. The plugin would otherwise ask a model to *write* each
   field's prompt at boot, one request per field, against `gpt-4o-mini`.
 - Restricts generation to logged-in users.
 
-The default model ids `chat` and `chat_with_complex_json` are aliases that every
-region resolves. Explicit ids (`claude-5-sonnet`, `gpt-4.1`,
-`mistral-large-latest`, …) depend on region and plan.
+New fields start on the first entry of `AMAZEE_AI_MODELS`, by default `chat`, an
+alias every region resolves. Explicit ids (`claude-5-sonnet`, `gpt-4.1`,
+`mistral-large-latest`, …) depend on region and plan; a model that later
+disappears from the gateway stays selectable, flagged as not listed.
 
 Known limits: rich text generation asks the model for the whole Lexical JSON of
 the field, constrained by a JSON schema, and streams it over the OpenAI
 Responses API. Verified on `de-eu101` with `chat` and `claude-5-sonnet`; a small
 open-weight model may return invalid JSON. Changing the token or the base URL
 needs a restart: the CMS reads `.env` once, at boot.
-Translate does not create a locale version by itself — it rewrites the field in
-the locale you are editing. On Lagoon, set the same variables on the `cms`
+Translate offers the CMS locales only (`en`, `fr`) and does not create a locale
+version by itself — it rewrites the field in the locale you are editing. On Lagoon, set the same variables on the `cms`
 service (`lagoon add variable`).
 
 ## Rendering: static pages, one dynamic route
@@ -251,7 +256,7 @@ One `.env` at the repo root, read by both apps. See `.env.example`.
 | `PAYLOAD_ALLOW_EMPTY` | web | Allows a build with nothing published. |
 | `AMAZEE_AI_API_TOKEN` | CMS | amazee.ai key. Unset disables the AI assistant entirely. |
 | `AMAZEE_AI_BASE_URL` | CMS | Gateway of the key's region, `https://llm.<region>.amazee.ai/v1`. Default `de-eu101`. |
-| `AMAZEE_AI_MODELS` | CMS | Comma-separated model ids offered in the editor. Default `chat,chat_with_complex_json`. |
+| `AMAZEE_AI_MODELS` | CMS | Default model for new fields, and the picker's fallback when the gateway is unreachable. Default `chat,chat_with_complex_json`. |
 
 ## Deploying to Lagoon
 
