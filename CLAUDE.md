@@ -39,4 +39,4 @@ In a coding-agent environment Astro 7 starts `astro dev` detached, so the `web` 
 - English everywhere. Comments explain *why*, at the length that needs; existing files set the tone.
 - Conventional commits, one line, no scope (`feat: …`, `docs: …`), as in `git log`.
 - `docs/` holds the feasibility studies (in French) and the decision records behind the current shape; `HANDOFF.md` lists decisions already taken. Reopen one only with a reason.
-- Lagoon manifests (`lagoon/`, `.lagoon.yml`, `docker-compose.yml`) describe a previous architecture and carry `TODO (deployment)` markers; they are not exercised locally and are out of scope unless the task is deployment.
+- Deployment: `docker-compose.yml` and `lagoon/` are for Lagoon only, never run locally. Images are built before the CMS exists, so `next build` runs with placeholder env and the site is built post-rollout (`.lagoon.yml`). Production URLs come from `LAGOON_ROUTES`, the schema from `apps/cms/src/migrations` via `prodMigrations`: a collection change needs `payload migrate:create` and a committed migration, or production boots against a stale schema.
