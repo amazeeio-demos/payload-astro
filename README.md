@@ -1,9 +1,10 @@
-# astro-payload-lagoon
+# Payload Astro on Lagoon with amazee.ai
 
-Proof of concept: a developer documentation site with content managed in
+Demo of a developer documentation site with content managed in
 **Payload CMS**, rendered statically by **Astro**, with an **instant live
 preview** of drafts driven from the Payload admin panel. Deployment target is
-**Lagoon** (amazee.io).
+**Lagoon** (amazee.io), with the optional use of amazee.ai private gateway to enhance
+the editorial workflow with [payload-ai](https://github.com/ashbuilds/payload-ai).
 
 Content travels over **GraphQL**, and the frontend renders Payload's Lexical
 JSON itself — no `@payloadcms/*` package ends up in the Astro build.
