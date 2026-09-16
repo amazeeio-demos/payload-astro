@@ -9,7 +9,7 @@ Content travels over **GraphQL**, and the frontend renders Payload's Lexical
 JSON itself — no `@payloadcms/*` package ends up in the Astro build.
 
 ```
-apps/cms                   Payload 3 on Next.js — admin, API, GraphQL
+apps/cms                   Payload 3 on Next.js — admin, API, GraphQL, AI assistant
 apps/web                   Astro 7 hybrid site: static pages + on-demand preview
 packages/ui                React components: DocPage, the Lexical serializer, blocks
 packages/graphql           GraphQL documents and their generated types
@@ -131,6 +131,78 @@ The preview never gets cached or indexed: the route sets `Cache-Control:
 no-store` and `X-Robots-Tag: noindex, nofollow`, and the page carries a
 `noindex` meta tag.
 
+## AI assistant (amazee.ai)
+
+Doc pages get an assistant in the admin panel: **Compose**, **Proofread**,
+**Translate** and **Rephrase** in the `body` editor, and a *Compose* action under
+`title`, `description` and `sidebarLabel`. The model runs behind the
+[amazee.ai private gateway](https://docs.amazee.ai), never at a public provider.
+
+The feature is optional and off by default: without `AMAZEE_AI_API_TOKEN` neither
+the plugin nor the editor menu is registered.
+
+### Try it
+
+1. Create a key at <https://my.amazee.io> (it is bound to one region) and put it
+   in `.env` as `AMAZEE_AI_API_TOKEN`. If the region is not `de-eu101`, also set
+   `AMAZEE_AI_BASE_URL=https://llm.<region>.amazee.ai/v1`.
+2. Check the key before touching the CMS — the response lists the model ids the
+   key may use:
+
+   ```bash
+   curl -H "Authorization: Bearer $AMAZEE_AI_API_TOKEN" \
+     https://llm.de-eu101.amazee.ai/v1/models
+   ```
+
+3. Restart `pnpm dev`. On the first boot the plugin creates one *Compose
+   Setting* per field (`docs.title`, `docs.description`, `docs.sidebarLabel`,
+   `docs.body`) with the prompts from `apps/cms/src/ai/amazeeAi.ts`, and a
+   `plugin-ai-instructions` table appears in PostgreSQL.
+4. Open a doc page in the admin panel and click into a field. An AI bar appears
+   under the focused field: *Compose* when it is empty, *Rephrase*, *Proofread*
+   and *Translate* once it has content. In `body` the same actions work on the
+   current selection.
+5. The *Settings* entry of that bar opens the field's Compose Setting: prompt,
+   model, temperature, max tokens. The model list is the gateway's own: the
+   picker asks `/api/amazee-ai/models`, which proxies LiteLLM's `/model/info`
+   with the token and keeps the `chat` models, cached for ten minutes. When the
+   gateway cannot be reached the picker falls back to `AMAZEE_AI_MODELS`. Prompts are Handlebars templates over the
+   document being edited: `{{ title }}`, `{{ description }}`,
+   `{{ toHTML body }}` (HTML of the rich text field; the plugin has no working plain-text helper). Edits persist in the
+   database, not in code.
+
+### How it is wired
+
+`@ai-stack/payloadcms` is a community plugin — Payload's core ships no LLM
+client, only an MCP server that exposes the CMS to agents. It drives the Vercel
+AI SDK, and its OpenAI provider accepts a custom base URL. The amazee.ai gateway
+is a LiteLLM proxy, so the OpenAI protocol is all it needs.
+`apps/cms/src/ai/amazeeAi.ts` does the rest:
+
+- Reads `AMAZEE_AI_API_TOKEN` and `AMAZEE_AI_BASE_URL` into the plugin's `openai`
+  provider — deliberately not the `OPENAI_*` names the plugin reads by default,
+  so the private token can never reach api.openai.com.
+- Replaces the plugin's hard-coded GPT model select with `ModelSelect`, a text
+  field whose options come from the gateway (`apps/cms/src/ai/models.ts`), and
+  keeps only text models: the gateway serves no image or speech endpoints.
+- Seeds static prompts. The plugin would otherwise ask a model to *write* each
+  field's prompt at boot, one request per field, against `gpt-4o-mini`.
+- Restricts generation to logged-in users.
+
+New fields start on the first entry of `AMAZEE_AI_MODELS`, by default `chat`, an
+alias every region resolves. Explicit ids (`claude-5-sonnet`, `gpt-4.1`,
+`mistral-large-latest`, …) depend on region and plan; a model that later
+disappears from the gateway stays selectable, flagged as not listed.
+
+Known limits: rich text generation asks the model for the whole Lexical JSON of
+the field, constrained by a JSON schema, and streams it over the OpenAI
+Responses API. Verified on `de-eu101` with `chat` and `claude-5-sonnet`; a small
+open-weight model may return invalid JSON. Changing the token or the base URL
+needs a restart: the CMS reads `.env` once, at boot.
+Translate offers the CMS locales only (`en`, `fr`) and does not create a locale
+version by itself — it rewrites the field in the locale you are editing. On Lagoon, set the same variables on the `cms`
+service (`lagoon add variable`).
+
 ## Rendering: static pages, one dynamic route
 
 `apps/web` is a hybrid: `output: 'static'` plus the node adapter. Everything is
@@ -182,31 +254,70 @@ One `.env` at the repo root, read by both apps. See `.env.example`.
 | `SITE_URL` | web | Public URL of the site. |
 | `DOCS_ENTRY_SLUG` | web | Page the home page links to (default `introduction`). |
 | `PAYLOAD_ALLOW_EMPTY` | web | Allows a build with nothing published. |
+| `AMAZEE_AI_API_TOKEN` | CMS | amazee.ai key. Unset disables the AI assistant entirely. |
+| `AMAZEE_AI_BASE_URL` | CMS | Gateway of the key's region, `https://llm.<region>.amazee.ai/v1`. Default `de-eu101`. |
+| `AMAZEE_AI_MODELS` | CMS | Default model for new fields, and the picker's fallback when the gateway is unreachable. Default `chat,chat_with_complex_json`. |
 
 ## Deploying to Lagoon
 
-**Not covered by this pass.** The manifests still describe the previous
-architecture and were only updated where the database switch broke them outright;
-each open point carries a `TODO (deployment)` comment. What is known:
+Three services, declared in `docker-compose.yml` for Lagoon only (local
+development never uses Docker for the apps): `cms` (`node`), `web`
+(`node-persistent`, the build output on a volume) and `postgres`. Environments
+are `prod` and `dev` (`.lagoon.yml`), routes are autogenerated.
 
-- Three services: `cms` (`node`), `web` (`node-persistent`) and `postgres`.
-- Lagoon builds images **before** deploying them, so the site cannot be generated
-  at `docker build` time — it is built after the rollout by the `post-rollout`
-  tasks in `.lagoon.yml`, once `cms` answers on its internal name.
-- The site is no longer purely static: `/preview/*` needs the node server from
-  `dist/server/entry.mjs`. Serving both from the `web` service works locally; the
-  split has not been tested on a cluster.
-- With the Postgres adapter the schema is pushed automatically in development
-  only. A shared environment needs real migrations (`payload migrate`) before
-  anything writes.
-- The variables Lagoon injects for its database service still have to be mapped
-  in `apps/cms/src/lib/databaseUri.ts`, which today only reads `DATABASE_URI`.
+Lagoon builds images **before** deploying them, so the site cannot be generated
+at `docker build` time. `.lagoon.yml` does it in three post-rollout steps: seed
+a blank database from the `cms` pod, wait for the CMS from the `web` pod, build
+the site into `apps/web/dist` (the persistent volume). The `web` container waits
+for that output before starting its server, so the very first rollout does not
+crash-loop. Static pages refresh as soon as they are copied; the preview
+server's own bundle only on the next pod start.
+
+**Schema.** Development pushes it on the fly. Production runs the migrations in
+`apps/cms/src/migrations` when Payload initialises (`prodMigrations` in the
+config), in the server and in the seed alike. After changing a collection:
+
+```bash
+pnpm --filter cms payload migrate:create <name>   # needs pnpm dev running
+```
+
+and commit the result. The initial migration includes the AI plugin's table,
+generated with the token set.
+
+**Variables.** URLs need none: the CMS reads its own origin and the site's from
+`LAGOON_ROUTES` (`apps/cms/src/lib/lagoonRoutes.ts`), the site does the same
+(`apps/web/src/site.ts`), and the database URI is rebuilt from what the
+`postgres` service injects (`apps/cms/src/lib/databaseUri.ts`). Custom domains
+break the `cms.`/`web.` hostname convention: put the site first under
+`environments.<name>.routes` and set `NEXT_PUBLIC_SERVER_URL` and `SITE_URL` as
+environment variables.
+
+The rest is set once, as **project** variables with the `runtime` scope, so any
+new environment inherits them:
+
+| Variable | Value |
+|---|---|
+| `PAYLOAD_SECRET`, `PREVIEW_SECRET` | `openssl rand -hex 32` |
+| `PREVIEW_API_KEY` | a UUID; the seed gives it to the preview user |
+| `SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD` | administrator created on first install |
+| `PAYLOAD_GRAPHQL_URL` | `http://cms:3000/api/graphql`, the internal service name |
+| `AMAZEE_AI_API_TOKEN`, `AMAZEE_AI_BASE_URL` | see the AI section |
+
+```bash
+lagoon add variable -p payload-astro -N PAYLOAD_SECRET -V "$(openssl rand -hex 32)" -S runtime
+lagoon list project-variables -p payload-astro
+```
+
+Known limits: media uploads land on the `cms` pod's filesystem and do not
+survive a restart; the `postgres` meta type gives a single pod without a DBaaS
+operator, with no backup beyond Lagoon's own.
 
 ## Out of scope
 
-- Lagoon deployment (above).
 - Payload media persistence in production (dedicated volume or S3).
 - Syntax highlighting worthy of the name — `CodeBlock` renders
   `<pre><code class="language-…">` and stops there.
 - Search, SEO plugin, CI pipeline.
-- AI features: see `docs/feasibility-preview-ai.md`.
+- AI beyond the editor assistant — alt text, embeddings on the amazee.ai
+  pgvector database, semantic search. The survey in
+  `docs/feasibility-preview-ai.md` lists the candidates.

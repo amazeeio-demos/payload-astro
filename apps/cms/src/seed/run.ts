@@ -13,6 +13,16 @@ import { CATEGORIES, DOCS } from './content'
 
 const payload = await getPayload({ config })
 
+// `--if-empty`: only ever seed a blank database. The post-rollout task on Lagoon
+// runs on every deployment; this is what makes it a first-install step.
+if (process.argv.includes('--if-empty')) {
+  const { totalDocs } = await payload.count({ collection: 'users' })
+  if (totalDocs > 0) {
+    console.log(`[seed] ${totalDocs} user(s) already present, nothing to do`)
+    process.exit(0)
+  }
+}
+
 // The `body` field's editor, not the default Lexical one: it is the one carrying
 // `CodeBlock`, hence the converter that knows how to read ``` fences.
 const bodyField = payload.collections.docs.config.fields.find(
