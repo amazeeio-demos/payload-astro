@@ -6,14 +6,16 @@
 # apps/web/dist — a persistent volume, so it survives pod restarts.
 #
 # The site is not purely static: public pages are files under dist/client, but
-# /preview/* needs the node server in dist/server/entry.mjs, and that is what
-# `pnpm --filter web start` runs, serving both.
+# /preview/* needs the node server in dist/server/entry.mjs, and
+# lagoon/web-entrypoint.mjs runs it, serving both.
 ARG LAGOON_VERSION=26.7.0
 
 FROM uselagoon/node-24-builder:${LAGOON_VERSION} AS builder
 
 WORKDIR /app
 
+# pnpm via corepack, cached under /app so the runtime stage inherits it.
+ENV COREPACK_HOME=/app/.corepack
 RUN corepack enable
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
@@ -27,11 +29,17 @@ RUN pnpm install --frozen-lockfile --filter web...
 
 COPY . .
 
+# Lagoon runs the container as an arbitrary uid in group 0, and the post-rollout
+# build writes into node_modules/.vite and apps/web/.astro: group-writable or
+# EACCES.
+RUN fix-permissions /app
+
 
 FROM uselagoon/node-24:${LAGOON_VERSION}
 
 WORKDIR /app
 
+ENV COREPACK_HOME=/app/.corepack
 RUN corepack enable
 
 COPY --from=builder /app /app
@@ -45,7 +53,7 @@ ENV HOST=0.0.0.0
 ENV PORT=3000
 EXPOSE 3000
 
-# On the very first rollout the volume is empty until the post-rollout task has
-# built the site; starting the server then would crash the pod, and Lagoon runs
-# that task inside the pod. So wait for the build output instead.
-CMD ["sh", "-c", "until [ -f /app/apps/web/dist/server/entry.mjs ]; do echo 'Waiting for the site to be built by the post-rollout task…'; sleep 10; done; exec pnpm --filter web start"]
+# Listens on 3000 at once and answers 503 until the post-rollout task has built
+# the site, then runs Astro's server: Lagoon only runs that task after the pod
+# is ready, so waiting before listening would deadlock the first rollout.
+CMD ["node", "/app/lagoon/web-entrypoint.mjs"]
