@@ -1,6 +1,7 @@
 // Must stay first: populates process.env before anything else reads it.
 import './lib/env'
 
+import { PayloadAiPluginLexicalEditorFeature } from '@ai-stack/payloadcms'
 import { postgresAdapter } from '@payloadcms/db-postgres'
 import { BlocksFeature, CodeBlock, lexicalEditor } from '@payloadcms/richtext-lexical'
 import path from 'path'
@@ -12,6 +13,7 @@ import { Categories } from './collections/Categories'
 import { Docs } from './collections/Docs'
 import { Media } from './collections/Media'
 import { Users } from './collections/Users'
+import { amazeeAiEnabled, amazeeAiPlugin } from './ai/amazeeAi'
 import { resolveDatabaseUri } from './lib/databaseUri'
 
 const filename = fileURLToPath(import.meta.url)
@@ -127,10 +129,15 @@ export default buildConfig({
   // than `bash`). We narrow it to what this project actually uses, with
   // identifiers Shiki recognises on the Astro side: the value picked here lands
   // verbatim after the ``` and drives syntax highlighting.
+  //
+  // The AI feature adds the assistant menu (compose, proofread, translate,
+  // rephrase) to every rich text field. It is only registered together with the
+  // plugin: without a gateway token the menu would render but every action fail.
   editor: lexicalEditor({
     features: ({ defaultFeatures }) => [
       ...defaultFeatures,
       BlocksFeature({ blocks: [CodeBlock({ languages: CODE_LANGUAGES })] }),
+      ...(amazeeAiEnabled ? [PayloadAiPluginLexicalEditorFeature()] : []),
     ],
   }),
   secret: process.env.PAYLOAD_SECRET || '',
@@ -141,5 +148,6 @@ export default buildConfig({
     pool: { connectionString: resolveDatabaseUri() },
   }),
   sharp,
-  plugins: [],
+  // See apps/cms/src/ai/amazeeAi.ts — a no-op without AMAZEE_AI_API_TOKEN.
+  plugins: amazeeAiEnabled ? [amazeeAiPlugin()] : [],
 })

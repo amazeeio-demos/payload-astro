@@ -9,7 +9,7 @@ Content travels over **GraphQL**, and the frontend renders Payload's Lexical
 JSON itself — no `@payloadcms/*` package ends up in the Astro build.
 
 ```
-apps/cms                   Payload 3 on Next.js — admin, API, GraphQL
+apps/cms                   Payload 3 on Next.js — admin, API, GraphQL, AI assistant
 apps/web                   Astro 7 hybrid site: static pages + on-demand preview
 packages/ui                React components: DocPage, the Lexical serializer, blocks
 packages/graphql           GraphQL documents and their generated types
@@ -131,6 +131,73 @@ The preview never gets cached or indexed: the route sets `Cache-Control:
 no-store` and `X-Robots-Tag: noindex, nofollow`, and the page carries a
 `noindex` meta tag.
 
+## AI assistant (amazee.ai)
+
+Doc pages get an assistant in the admin panel: **Compose**, **Proofread**,
+**Translate** and **Rephrase** in the `body` editor, and a *Compose* action under
+`title`, `description` and `sidebarLabel`. The model runs behind the
+[amazee.ai private gateway](https://docs.amazee.ai), never at a public provider.
+
+The feature is optional and off by default: without `AMAZEE_AI_API_TOKEN` neither
+the plugin nor the editor menu is registered.
+
+### Try it
+
+1. Create a key at <https://my.amazee.io> (it is bound to one region) and put it
+   in `.env` as `AMAZEE_AI_API_TOKEN`. If the region is not `de-eu101`, also set
+   `AMAZEE_AI_BASE_URL=https://llm.<region>.amazee.ai/v1`.
+2. Check the key before touching the CMS — the response lists the model ids the
+   key may use:
+
+   ```bash
+   curl -H "Authorization: Bearer $AMAZEE_AI_API_TOKEN" \
+     https://llm.de-eu101.amazee.ai/v1/models
+   ```
+
+3. Restart `pnpm dev`. On the first boot the plugin creates one *Compose
+   Setting* per field (`docs.title`, `docs.description`, `docs.sidebarLabel`,
+   `docs.body`) with the prompts from `apps/cms/src/ai/amazeeAi.ts`, and a
+   `plugin-ai-instructions` table appears in PostgreSQL.
+4. Open a doc page in the admin panel and click into a field. An AI bar appears
+   under the focused field: *Compose* when it is empty, *Rephrase*, *Proofread*
+   and *Translate* once it has content. In `body` the same actions work on the
+   current selection.
+5. The *Settings* entry of that bar opens the field's Compose Setting: prompt,
+   model, temperature, max tokens. Prompts are Handlebars templates over the
+   document being edited: `{{ title }}`, `{{ description }}`,
+   `{{ toHTML body }}` (HTML of the rich text field; the plugin has no working plain-text helper). Edits persist in the
+   database, not in code.
+
+### How it is wired
+
+`@ai-stack/payloadcms` is a community plugin — Payload's core ships no LLM
+client, only an MCP server that exposes the CMS to agents. It drives the Vercel
+AI SDK, and its OpenAI provider accepts a custom base URL. The amazee.ai gateway
+is a LiteLLM proxy, so the OpenAI protocol is all it needs.
+`apps/cms/src/ai/amazeeAi.ts` does the rest:
+
+- Reads `AMAZEE_AI_API_TOKEN` and `AMAZEE_AI_BASE_URL` into the plugin's `openai`
+  provider — deliberately not the `OPENAI_*` names the plugin reads by default,
+  so the private token can never reach api.openai.com.
+- Replaces the plugin's hard-coded GPT model list with `AMAZEE_AI_MODELS`, and
+  keeps only text models: the gateway serves no image or speech endpoints.
+- Seeds static prompts. The plugin would otherwise ask a model to *write* each
+  field's prompt at boot, one request per field, against `gpt-4o-mini`.
+- Restricts generation to logged-in users.
+
+The default model ids `chat` and `chat_with_complex_json` are aliases that every
+region resolves. Explicit ids (`claude-5-sonnet`, `gpt-4.1`,
+`mistral-large-latest`, …) depend on region and plan.
+
+Known limits: rich text generation asks the model for the whole Lexical JSON of
+the field, constrained by a JSON schema, and streams it over the OpenAI
+Responses API. Verified on `de-eu101` with `chat` and `claude-5-sonnet`; a small
+open-weight model may return invalid JSON. Changing the token or the base URL
+needs a restart: the CMS reads `.env` once, at boot.
+Translate does not create a locale version by itself — it rewrites the field in
+the locale you are editing. On Lagoon, set the same variables on the `cms`
+service (`lagoon add variable`).
+
 ## Rendering: static pages, one dynamic route
 
 `apps/web` is a hybrid: `output: 'static'` plus the node adapter. Everything is
@@ -182,6 +249,9 @@ One `.env` at the repo root, read by both apps. See `.env.example`.
 | `SITE_URL` | web | Public URL of the site. |
 | `DOCS_ENTRY_SLUG` | web | Page the home page links to (default `introduction`). |
 | `PAYLOAD_ALLOW_EMPTY` | web | Allows a build with nothing published. |
+| `AMAZEE_AI_API_TOKEN` | CMS | amazee.ai key. Unset disables the AI assistant entirely. |
+| `AMAZEE_AI_BASE_URL` | CMS | Gateway of the key's region, `https://llm.<region>.amazee.ai/v1`. Default `de-eu101`. |
+| `AMAZEE_AI_MODELS` | CMS | Comma-separated model ids offered in the editor. Default `chat,chat_with_complex_json`. |
 
 ## Deploying to Lagoon
 
@@ -209,4 +279,6 @@ each open point carries a `TODO (deployment)` comment. What is known:
 - Syntax highlighting worthy of the name — `CodeBlock` renders
   `<pre><code class="language-…">` and stops there.
 - Search, SEO plugin, CI pipeline.
-- AI features: see `docs/feasibility-preview-ai.md`.
+- AI beyond the editor assistant — alt text, embeddings on the amazee.ai
+  pgvector database, semantic search. The survey in
+  `docs/feasibility-preview-ai.md` lists the candidates.
