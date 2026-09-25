@@ -1,9 +1,9 @@
 # Local development database.
 #
 # Separate from `docker-compose.yml`, which is Lagoon's service manifest and is
-# never run locally. Started by `pnpm dev:db` (`docker compose -f
-# docker-compose.dev.yml up`); the data lives in a named volume, so it survives
-# `docker compose down`.
+# never run locally. Started by `pnpm dev` (detached and awaited, so the seed can
+# run, then attached as the `db` pane); the data lives in a named volume, so it
+# survives `docker compose down`.
 
 services:
   postgres:
@@ -20,8 +20,8 @@ services:
       POSTGRES_DB: payload
     volumes:
       - postgres-data:/var/lib/postgresql/data
-    # Payload's first connection happens as soon as the CMS boots, which under
-    # `pnpm dev` is a couple of seconds after this container starts.
+    # `pnpm dev` waits on this (`up --wait`) before seeding: the seed connects
+    # as soon as it starts.
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -U payload -d payload']
       interval: 2s
