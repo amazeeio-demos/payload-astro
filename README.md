@@ -1,18 +1,23 @@
 # Payload + Astro with amazee.ai
 
-A developer documentation site: content in **Payload CMS**, rendered statically
-by **Astro**, with an instant live preview of drafts and an AI writing assistant
-(Compose, Proofread, Translate, Rephrase) running through the
-[amazee.ai private gateway](https://docs.amazee.ai).
+A demo of a multilingual developer documentation site:
 
-## Requirements
+- ✍️ Content edited in **Payload CMS**, rendered statically by **Astro**
+- 👀 Instant live preview of drafts, as you type
+- 🤖 AI writing assistant (Compose, Proofread, Translate, Rephrase)
+- 🔒 Models served through the [amazee.ai private gateway](https://docs.amazee.ai),
+  in the region you choose
+
+![Payload admin with the AI menu open on a field, next to the live preview of the draft](docs/images/payload-instant-preview-ai.png)
+
+## 📋 Requirements
 
 - Node ≥ 22 and pnpm
 - Docker (local PostgreSQL only)
 - An amazee.ai API key from <https://my.amazee.io> (optional: without it the
   site and CMS run, minus the assistant)
 
-## Run it
+## 🚀 Run it
 
 ```bash
 cp .env.example .env   # set AMAZEE_AI_API_TOKEN
@@ -22,9 +27,9 @@ pnpm dev               # PostgreSQL, demo content on first run,
                        # Payload (:3000) + Astro (:4321)
 ```
 
-- Admin: <http://localhost:3000/admin>, credentials from `SEED_ADMIN_EMAIL` /
+- **Admin**: <http://localhost:3000/admin>, credentials from `SEED_ADMIN_EMAIL` /
   `SEED_ADMIN_PASSWORD` in `.env`
-- Site: <http://localhost:4321>
+- **Site**: <http://localhost:4321>
 
 The other defaults in `.env.example` work as they are for local use.
 
@@ -37,7 +42,7 @@ curl -H "Authorization: Bearer $AMAZEE_AI_API_TOKEN" \
   https://llm.de-eu101.amazee.ai/v1/models
 ```
 
-## Try it
+## ✨ Try it
 
 1. Open a doc page in the admin panel. The **Live Preview** panel updates as you
    type, without saving.
@@ -46,12 +51,14 @@ curl -H "Authorization: Bearer $AMAZEE_AI_API_TOKEN" \
 3. *Settings* in that bar lets you choose the prompt, model and temperature for
    that field. The model list comes from the gateway.
 
+![amazee.ai settings of a field: model picked from the gateway's list, max tokens, temperature](docs/images/payload-ai-settings.png)
+
 Public pages are static: restart `pnpm dev` (or run `pnpm build:web`) to see
 saved changes there.
 
-## Go further
+## 📚 Go further
 
-| | |
+| Guide | What it covers |
 |---|---|
 | [Architecture](docs/architecture.md) | Repository layout, how content reaches Astro, rendering, i18n |
 | [Live preview](docs/live-preview.md) | How drafts reach the iframe, and what breaks it |
