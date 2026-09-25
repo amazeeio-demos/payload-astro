@@ -125,7 +125,7 @@ export const amazeeAiPlugin = (): Plugin => async (config) => {
         .map((model) => withGatewayModels(model, defaultModel)),
     seedPrompts,
     // Anyone logged into the admin may generate; tighten with a role check when
-    // roles exist (see docs/roles-and-access-control.md).
+    // roles exist.
     access: {
       generate: ({ req }) => Boolean(req.user),
       settings: ({ req }) => Boolean(req.user),
