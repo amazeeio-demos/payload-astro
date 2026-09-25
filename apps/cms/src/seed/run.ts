@@ -13,8 +13,9 @@ import { CATEGORIES, DOCS } from './content'
 
 const payload = await getPayload({ config })
 
-// `--if-empty`: only ever seed a blank database. The post-rollout task on Lagoon
-// runs on every deployment; this is what makes it a first-install step.
+// `--if-empty`: only ever seed a blank database. `pnpm dev` and the post-rollout
+// task on Lagoon run it on every start or deployment; this is what makes it a
+// first-install step, and leaves content deleted on purpose deleted.
 if (process.argv.includes('--if-empty')) {
   const { totalDocs } = await payload.count({ collection: 'users' })
   if (totalDocs > 0) {

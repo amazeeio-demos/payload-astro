@@ -2,15 +2,15 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-Proof of concept: Payload CMS content, rendered statically by Astro, with an instant live preview of drafts and an AI writing assistant behind the amazee.ai gateway. Target host is Lagoon. `README.md` is the reference for how each mechanism works (content flow, live preview, AI assistant, env variables) and is kept current; read the relevant section there before changing one of those areas rather than re-deriving it from the code.
+Proof of concept: Payload CMS content, rendered statically by Astro, with an instant live preview of drafts and an AI writing assistant behind the amazee.ai gateway. Target host is Lagoon. `docs/` is the reference for how each mechanism works (`architecture.md`, `live-preview.md`, `ai-assistant.md`, `configuration.md`, `lagoon.md`) and is kept current; read the relevant file there before changing one of those areas rather than re-deriving it from the code.
 
 ## Commands
 
 pnpm workspace: `apps/cms` (Payload 3 on Next 16), `apps/web` (Astro 7), `packages/{ui,graphql,payload-loader}` shipped as TypeScript sources.
 
 ```bash
-pnpm dev                 # PostgreSQL (Docker) + Payload :3000 + Astro :4321
-pnpm seed                # idempotent demo content, once, in a second terminal
+pnpm dev                 # PostgreSQL (Docker), seed --if-empty, Payload :3000 + Astro :4321
+pnpm seed                # idempotent demo content (restores missing pages)
 pnpm typecheck           # every package (tsc / astro check)
 pnpm build               # cms then web
 pnpm generate:types      # apps/cms/src/payload-types.ts
@@ -38,5 +38,5 @@ In a coding-agent environment Astro 7 starts `astro dev` detached, so the `web` 
 
 - English everywhere. Comments explain *why*, at the length that needs; existing files set the tone.
 - Conventional commits, one line, no scope (`feat: …`, `docs: …`), as in `git log`.
-- `docs/` holds the feasibility studies (in French) and the decision records behind the current shape; `HANDOFF.md` lists decisions already taken. Reopen one only with a reason.
+- `README.md` stays a short local quickstart (with the amazee.ai gateway); details go in `docs/*.md`, one file per mechanism, linked from its "Go further" table. `HANDOFF.md` lists decisions already taken; reopen one only with a reason.
 - Deployment: `docker-compose.yml` and `lagoon/` are for Lagoon only, never run locally. Images are built before the CMS exists, so `next build` runs with placeholder env and the site is built post-rollout (`.lagoon.yml`), while `lagoon/web-entrypoint.mjs` keeps port 3000 answering 503 until then. The Lagoon node images have no `bash`, no `curl`, and run as a non-root uid in group 0 (hence `sh`, the node wait script and `fix-permissions`). Production URLs come from `LAGOON_ROUTES`, the schema from `apps/cms/src/migrations` via `prodMigrations`: a collection change needs `payload migrate:create` and a committed migration, or production boots against a stale schema.
